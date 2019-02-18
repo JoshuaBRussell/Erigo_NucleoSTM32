@@ -18,3 +18,4 @@ Once a project has been made using **CubeMX** in can be imported into **System W
 Once the project is imported you can press the *Build* button (looks like a hammer) to build the project and make sure everything is okay. 
 
 Make sure to place any *"user"* code into the noted comment blocks. This is allows **CubeMX** (and therefore us) to change the configuration of the uC without **CubeMX** deleting our code. 
+:
