@@ -25,3 +25,6 @@ Once the project is imported you can press the *Build* button (looks like a hamm
 
 Make sure to place any *"user"* code into the noted comment blocks. This allows **CubeMX** (and therefore us) to change the configuration of the uC without **CubeMX** deleting our code. 
 
+# HAL Documentation
+
+Link to STM32F4 HAL(Hardware ABstraction Layer) documentation.[Link](https://www.st.com/content/ccc/resource/technical/document/user_manual/2f/71/ba/b8/75/54/47/cf/DM00105879.pdf/files/DM00105879.pdf/jcr:content/translations/en.DM00105879.pdf)
