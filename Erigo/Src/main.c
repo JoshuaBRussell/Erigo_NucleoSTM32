@@ -53,7 +53,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+//These are based on a PSC: 200 and Internal Clock: 84E6
+#define TPULSE_IN_COUNTS 2090
+#define TPERIOD_100HZ_IN_COUNTS 4178
+#define TPERIOD_050HZ_IN_COUNTS 8357
+#define TPERIOD_025HZ_IN_COUNTS 16715
+#define TPERIOD_12.5HZ_IN_COUNTS 33432
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -84,6 +89,9 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint32_t Waveform_State = 0;
+uint16_t T_Low = 30; //Initially based on freq.
+
 uint32_t NM_Amplitude = 0;
 /* USER CODE END 0 */
 
@@ -254,9 +262,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 2000;
+  htim3.Init.Prescaler = 200;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 42;
+  htim3.Init.Period = 2090;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
@@ -362,6 +370,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+
+	if(Waveform_State == 0)
+	{
+		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+		Waveform_State = 1;
+	}
+	else{
+		__HAL_TIM_SET_AUTORELOAD(&htim3, (33432-TPULSE_IN_COUNTS));
+		Waveform_State = 0;
+	}
 }
 
 /* USER CODE END 4 */
