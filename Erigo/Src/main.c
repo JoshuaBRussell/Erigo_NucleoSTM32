@@ -58,7 +58,7 @@
 #define TPERIOD_100HZ_IN_COUNTS 4178
 #define TPERIOD_050HZ_IN_COUNTS 8357
 #define TPERIOD_025HZ_IN_COUNTS 16715
-#define TPERIOD_12.5HZ_IN_COUNTS 33432
+#define TPERIOD_12_5HZ_IN_COUNTS 33432
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -74,7 +74,12 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+enum WF_STATE{
+    PIN_LOW = 0,
+	PIN_HIGH
 
+};
+enum WF_STATE TRIGGER_STATE = PIN_LOW;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,8 +94,9 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t Waveform_State = 0;
-uint16_t T_Low = 30; //Initially based on freq.
+
+uint16_t T_LOW = 0; //Initially based on freq.
+uint16_t T_PERIOD = 0;
 
 uint32_t NM_Amplitude = 0;
 /* USER CODE END 0 */
@@ -134,6 +140,10 @@ int main(void)
   {
 	  NM_Amplitude = HAL_ADC_GetValue(&hadc1);
   }
+
+  //TODO: Some method to get FREQ selection here.
+  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+  T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
   HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END 2 */
@@ -371,14 +381,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 
-	if(Waveform_State == 0)
+	if(TRIGGER_STATE == PIN_LOW)
 	{
 		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-		Waveform_State = 1;
+		TRIGGER_STATE = PIN_HIGH;
 	}
 	else{
-		__HAL_TIM_SET_AUTORELOAD(&htim3, (33432-TPULSE_IN_COUNTS));
-		Waveform_State = 0;
+		__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
+		TRIGGER_STATE = PIN_LOW;
 	}
 }
 
