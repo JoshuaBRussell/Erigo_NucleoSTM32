@@ -43,7 +43,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdbool.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +53,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//These are based on a PSC: 200 and Internal Clock: 84E6
+#define TPULSE_IN_COUNTS 2090
+#define TPERIOD_100HZ_IN_COUNTS 4178
+#define TPERIOD_050HZ_IN_COUNTS 8357
+#define TPERIOD_025HZ_IN_COUNTS 16715
+#define TPERIOD_12_5HZ_IN_COUNTS 33432
 
+#define STIM_LOW_PRETEST_IN_COUNTS 16715
+#define STIM_LOW_POSTTEST_IN_COUNTS 16715
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,10 +72,20 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
+TIM_HandleTypeDef htim3;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+enum WF_STATE{
+    STIM_FREQ_TRIGGER_LOW = 0,
+	STIM_FREQ_TRIGGER_HIGH,
+	STIM_TEST_TRIGGER_LOW_PRETEST,
+	STIM_TEST_TRIGGER_HIGH,
+	STIM_TEST_TRIGGER_LOW_POSTTEST
 
+};
+enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,13 +93,20 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+uint16_t T_LOW = 0; //Initially based on freq.
+uint16_t T_PERIOD = 0;
+
 uint32_t NM_Amplitude = 0;
+
+bool TEST_FLAG = true;
 /* USER CODE END 0 */
 
 /**
@@ -114,6 +139,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   //Grab NeuroModulation amplitude at startup.
@@ -123,6 +149,11 @@ int main(void)
 	  NM_Amplitude = HAL_ADC_GetValue(&hadc1);
   }
 
+  //TODO: Some method to get FREQ selection here.
+  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+  T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+
+  HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -231,6 +262,50 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 200;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 2090;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -281,6 +356,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
@@ -294,9 +372,58 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : SCOPE_Pin_Pin */
+  GPIO_InitStruct.Pin = SCOPE_Pin_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(SCOPE_Pin_GPIO_Port, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
+
+//----ISR Callbacks----//
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+
+	switch(STIM_STATE)
+	{
+	case STIM_FREQ_TRIGGER_LOW:
+		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+		STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+		break;
+
+	case STIM_FREQ_TRIGGER_HIGH:
+		if(TEST_FLAG){
+			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
+			STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
+		}else{
+			__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
+            STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+		}
+		break;
+
+	case STIM_TEST_TRIGGER_LOW_PRETEST:
+		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+        STIM_STATE = STIM_TEST_TRIGGER_HIGH;
+		break;
+
+	case STIM_TEST_TRIGGER_HIGH:
+		TEST_FLAG = false;
+		__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
+		STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
+	    break;
+
+	case STIM_TEST_TRIGGER_LOW_POSTTEST:
+		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+        STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+		break;
+	}
+
+}
 
 /* USER CODE END 4 */
 
