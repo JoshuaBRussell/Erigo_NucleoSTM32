@@ -43,7 +43,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdbool.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,6 +59,9 @@
 #define TPERIOD_050HZ_IN_COUNTS 8357
 #define TPERIOD_025HZ_IN_COUNTS 16715
 #define TPERIOD_12_5HZ_IN_COUNTS 33432
+
+#define STIM_LOW_PRETEST_IN_COUNTS 16715
+#define STIM_LOW_POSTTEST_IN_COUNTS 16715
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -75,11 +78,14 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 enum WF_STATE{
-    PIN_LOW = 0,
-	PIN_HIGH
+    STIM_FREQ_TRIGGER_LOW = 0,
+	STIM_FREQ_TRIGGER_HIGH,
+	STIM_TEST_TRIGGER_LOW_PRETEST,
+	STIM_TEST_TRIGGER_HIGH,
+	STIM_TEST_TRIGGER_LOW_POSTTEST
 
 };
-enum WF_STATE TRIGGER_STATE = PIN_LOW;
+enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,6 +105,8 @@ uint16_t T_LOW = 0; //Initially based on freq.
 uint16_t T_PERIOD = 0;
 
 uint32_t NM_Amplitude = 0;
+
+bool TEST_FLAG = true;
 /* USER CODE END 0 */
 
 /**
@@ -381,15 +389,40 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 
-	if(TRIGGER_STATE == PIN_LOW)
+	switch(STIM_STATE)
 	{
+	case STIM_FREQ_TRIGGER_LOW:
 		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-		TRIGGER_STATE = PIN_HIGH;
+		STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+		break;
+
+	case STIM_FREQ_TRIGGER_HIGH:
+		if(TEST_FLAG){
+			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
+			STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
+		}else{
+			__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
+            STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+		}
+		break;
+
+	case STIM_TEST_TRIGGER_LOW_PRETEST:
+		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+        STIM_STATE = STIM_TEST_TRIGGER_HIGH;
+		break;
+
+	case STIM_TEST_TRIGGER_HIGH:
+		TEST_FLAG = false;
+		__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
+		STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
+	    break;
+
+	case STIM_TEST_TRIGGER_LOW_POSTTEST:
+		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+        STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+		break;
 	}
-	else{
-		__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
-		TRIGGER_STATE = PIN_LOW;
-	}
+
 }
 
 /* USER CODE END 4 */
