@@ -53,8 +53,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define STIM_TRIGGER_UPPER_THRESHOLD 2050
-#define STIM_TRIGGER_LOWER_THRESHOLD 1950
+#define STIM_TRIGGER_THRESHOLD 2000
+#define STIM_TRIGGER_TOLERANCE 50
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
 //These are based on a PSC: 200 and Internal Clock: 84E6
@@ -123,7 +123,8 @@ void add_value(uint16_t val){
 
 bool all_above_threshold(){
 	for(int i = 0; i < 5; i++){
-		if(Stim_Trigg_Values[i] < STIM_TRIGGER_UPPER_THRESHOLD){
+		if(Stim_Trigg_Values[i] < (STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE))
+		{
             return false;
 		}
 	}
@@ -132,7 +133,7 @@ bool all_above_threshold(){
 
 bool all_below_threshold(){
 	for(int i = 0; i < 5; i++){
-		if(Stim_Trigg_Values[i] > STIM_TRIGGER_LOWER_THRESHOLD){
+		if(Stim_Trigg_Values[i] > (STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE)){
             return false;
 		}
 	}
@@ -177,7 +178,8 @@ int main(void)
   HAL_ADC_Start(&hadc1);
   if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
   {
-	  NM_Amplitude = HAL_ADC_GetValue(&hadc1);
+	  uint16_t init_reading = HAL_ADC_GetValue(&hadc1);
+	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
   }
 
   //TODO: Some method to get FREQ selection here.
@@ -197,11 +199,11 @@ int main(void)
 		add_value(HAL_ADC_GetValue(&hadc1));
 		if((POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold()))
 		{
-			Num_of_Threshold_Counts++;
-			if((Num_of_Threshold_Counts%STIM_TRIGGER_CYCLE_LIMIT==(STIM_TRIGGER_CYCLE_LIMIT-1)))
+			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 			{
 				TEST_FLAG = true;
 			}
+			Num_of_Threshold_Counts++;
 			POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
 		}
 	}
