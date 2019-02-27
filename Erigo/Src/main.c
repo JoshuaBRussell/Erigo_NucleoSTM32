@@ -53,6 +53,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define STIM_TRIGGER_THRESHOLD 2000
+#define STIM_TRIGGER_TOLERANCE 50
+#define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
+
 //These are based on a PSC: 200 and Internal Clock: 84E6
 #define TPULSE_IN_COUNTS 2090
 #define TPERIOD_100HZ_IN_COUNTS 4178
@@ -100,13 +104,45 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+bool TEST_FLAG = false;
+uint32_t Num_of_Threshold_Counts = 0;
 
 uint16_t T_LOW = 0; //Initially based on freq.
 uint16_t T_PERIOD = 0;
 
 uint32_t NM_Amplitude = 0;
 
-bool TEST_FLAG = true;
+uint32_t Stim_Trigg_Index = 0;
+uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
+bool POS_BELOW_THRESHOLD = false;
+
+void add_value(uint16_t val){
+	Stim_Trigg_Values[Stim_Trigg_Index] = val;
+	Stim_Trigg_Index = (Stim_Trigg_Index+1)%5;
+}
+
+bool all_above_threshold(){
+	for(int i = 0; i < 5; i++){
+		if(Stim_Trigg_Values[i] < (STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE))
+		{
+            return false;
+		}
+	}
+	return true;
+}
+
+bool all_below_threshold(){
+	for(int i = 0; i < 5; i++){
+		if(Stim_Trigg_Values[i] > (STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE)){
+            return false;
+		}
+	}
+	return true;
+}
+
+bool should_test_pulse_be_produced(){
+	return (POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold());
+}
 /* USER CODE END 0 */
 
 /**
@@ -146,7 +182,8 @@ int main(void)
   HAL_ADC_Start(&hadc1);
   if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
   {
-	  NM_Amplitude = HAL_ADC_GetValue(&hadc1);
+	  uint16_t init_reading = HAL_ADC_GetValue(&hadc1);
+	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
   }
 
   //TODO: Some method to get FREQ selection here.
@@ -160,6 +197,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	HAL_ADC_Start(&hadc1);
+	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
+	{
+		add_value(HAL_ADC_GetValue(&hadc1));
+		if(should_test_pulse_be_produced())
+		{
+			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+			{
+				TEST_FLAG = true;
+			}
+			Num_of_Threshold_Counts++;
+			POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
+		}
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
