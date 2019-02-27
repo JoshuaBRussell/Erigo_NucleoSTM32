@@ -55,7 +55,7 @@
 /* USER CODE BEGIN PD */
 #define STIM_TRIGGER_UPPER_THRESHOLD 2050
 #define STIM_TRIGGER_LOWER_THRESHOLD 1950
-#define STIM_TRIGGER_CYCLE_LIMIT 4 //Number of times the threshold must be reached before Test Pulse is produced.
+#define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
 //These are based on a PSC: 200 and Internal Clock: 84E6
 #define TPULSE_IN_COUNTS 2090
@@ -195,27 +195,14 @@ int main(void)
 	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
 	{
 		add_value(HAL_ADC_GetValue(&hadc1));
-		if(POS_BELOW_THRESHOLD)
+		if((POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold()))
 		{
-			if(all_above_threshold())
-			{
 			Num_of_Threshold_Counts++;
-			if((Num_of_Threshold_Counts%STIM_TRIGGER_CYCLE_LIMIT==(STIM_TRIGGER_CYCLE_LIMIT-1))){
+			if((Num_of_Threshold_Counts%STIM_TRIGGER_CYCLE_LIMIT==(STIM_TRIGGER_CYCLE_LIMIT-1)))
+			{
 				TEST_FLAG = true;
 			}
-
-			POS_BELOW_THRESHOLD = false;
-			}
-		}
-		else{
-			if(all_below_threshold())
-			{
-			Num_of_Threshold_Counts++;
-			if((Num_of_Threshold_Counts%STIM_TRIGGER_CYCLE_LIMIT==(STIM_TRIGGER_CYCLE_LIMIT-1))){
-				TEST_FLAG = true;
-			}
-			POS_BELOW_THRESHOLD = true;
-			}
+			POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
 		}
 	}
     /* USER CODE END WHILE */
