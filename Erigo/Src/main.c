@@ -53,6 +53,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define STIM_TRIGGER_UPPER_THRESHOLD 2050
+#define STIM_TRIGGER_LOWER_THRESHOLD 1950
+
 //These are based on a PSC: 200 and Internal Clock: 84E6
 #define TPULSE_IN_COUNTS 2090
 #define TPERIOD_100HZ_IN_COUNTS 4178
@@ -106,7 +109,37 @@ uint16_t T_PERIOD = 0;
 
 uint32_t NM_Amplitude = 0;
 
-bool TEST_FLAG = true;
+uint32_t Stim_Trigg_Index = 0;
+uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
+bool TEST_FLAG = false;
+bool HYSTERESIS = false;
+
+void add_value(uint16_t val){
+	Stim_Trigg_Values[Stim_Trigg_Index] = val;
+	Stim_Trigg_Index = (Stim_Trigg_Index++)/5;
+}
+
+bool all_above_threshold(){
+	for(int i = 0; i < 5; i++){
+		if(Stim_Trigg_Values[i] < STIM_TRIGGER_UPPER_THRESHOLD){
+            return false;
+		}
+		else{
+			return true;
+		}
+	}
+}
+
+bool all_below_threshold(){
+	for(int i = 0; i < 5; i++){
+		if(Stim_Trigg_Values[i] > STIM_TRIGGER_LOWER_THRESHOLD){
+            return false;
+		}
+		else{
+			return true;
+		}
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -160,6 +193,26 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	HAL_ADC_Start(&hadc1);
+	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
+	{
+		add_value(HAL_ADC_GetValue(&hadc1));
+		if(HYSTERESIS)
+		{
+			if(all_above_threshold())
+			{
+			TEST_FLAG = true;
+			HYSTERESIS = false;
+			}
+		}
+		else{
+			if(all_below_threshold())
+			{
+			TEST_FLAG = true;
+			HYSTERESIS = true;
+			}
+		}
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
