@@ -139,6 +139,10 @@ bool all_below_threshold(){
 	}
 	return true;
 }
+
+bool should_test_pulse_be_produced(){
+	return (POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold());
+}
 /* USER CODE END 0 */
 
 /**
@@ -197,7 +201,7 @@ int main(void)
 	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
 	{
 		add_value(HAL_ADC_GetValue(&hadc1));
-		if((POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold()))
+		if(should_test_pulse_be_produced())
 		{
 			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 			{
