@@ -112,11 +112,11 @@ uint32_t NM_Amplitude = 0;
 uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
 bool TEST_FLAG = false;
-bool HYSTERESIS = false;
+bool POS_BELOW_THRESHOLD = false;
 
 void add_value(uint16_t val){
 	Stim_Trigg_Values[Stim_Trigg_Index] = val;
-	Stim_Trigg_Index = (Stim_Trigg_Index++)/5;
+	Stim_Trigg_Index = (Stim_Trigg_Index+1)%5;
 }
 
 bool all_above_threshold(){
@@ -124,10 +124,8 @@ bool all_above_threshold(){
 		if(Stim_Trigg_Values[i] < STIM_TRIGGER_UPPER_THRESHOLD){
             return false;
 		}
-		else{
-			return true;
-		}
 	}
+	return true;
 }
 
 bool all_below_threshold(){
@@ -135,10 +133,8 @@ bool all_below_threshold(){
 		if(Stim_Trigg_Values[i] > STIM_TRIGGER_LOWER_THRESHOLD){
             return false;
 		}
-		else{
-			return true;
-		}
 	}
+	return true;
 }
 /* USER CODE END 0 */
 
@@ -197,19 +193,19 @@ int main(void)
 	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
 	{
 		add_value(HAL_ADC_GetValue(&hadc1));
-		if(HYSTERESIS)
+		if(POS_BELOW_THRESHOLD)
 		{
 			if(all_above_threshold())
 			{
 			TEST_FLAG = true;
-			HYSTERESIS = false;
+			POS_BELOW_THRESHOLD = false;
 			}
 		}
 		else{
 			if(all_below_threshold())
 			{
 			TEST_FLAG = true;
-			HYSTERESIS = true;
+			POS_BELOW_THRESHOLD = true;
 			}
 		}
 	}
