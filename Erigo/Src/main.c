@@ -55,6 +55,7 @@
 /* USER CODE BEGIN PD */
 #define STIM_TRIGGER_UPPER_THRESHOLD 2050
 #define STIM_TRIGGER_LOWER_THRESHOLD 1950
+#define STIM_TRIGGER_CYCLE_LIMIT 4 //Number of times the threshold must be reached before Test Pulse is produced.
 
 //These are based on a PSC: 200 and Internal Clock: 84E6
 #define TPULSE_IN_COUNTS 2090
@@ -103,6 +104,8 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+bool TEST_FLAG = false;
+uint32_t Num_of_Threshold_Counts = 0;
 
 uint16_t T_LOW = 0; //Initially based on freq.
 uint16_t T_PERIOD = 0;
@@ -111,7 +114,6 @@ uint32_t NM_Amplitude = 0;
 
 uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
-bool TEST_FLAG = false;
 bool POS_BELOW_THRESHOLD = false;
 
 void add_value(uint16_t val){
@@ -197,14 +199,21 @@ int main(void)
 		{
 			if(all_above_threshold())
 			{
-			TEST_FLAG = true;
+			Num_of_Threshold_Counts++;
+			if((Num_of_Threshold_Counts%STIM_TRIGGER_CYCLE_LIMIT==(STIM_TRIGGER_CYCLE_LIMIT-1))){
+				TEST_FLAG = true;
+			}
+
 			POS_BELOW_THRESHOLD = false;
 			}
 		}
 		else{
 			if(all_below_threshold())
 			{
-			TEST_FLAG = true;
+			Num_of_Threshold_Counts++;
+			if((Num_of_Threshold_Counts%STIM_TRIGGER_CYCLE_LIMIT==(STIM_TRIGGER_CYCLE_LIMIT-1))){
+				TEST_FLAG = true;
+			}
 			POS_BELOW_THRESHOLD = true;
 			}
 		}
