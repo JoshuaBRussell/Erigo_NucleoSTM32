@@ -57,6 +57,8 @@
 #define STIM_TRIGGER_TOLERANCE 50
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
+#define STIM_FREQ_INTENSITY 1000
+#define STIM_TEST_INTENSITY 2500
 //These are based on a PSC: 200 and Internal Clock: 84E6
 #define TPULSE_IN_COUNTS 2090
 #define TPERIOD_100HZ_IN_COUNTS 4178
@@ -75,6 +77,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
+
+DAC_HandleTypeDef hdac;
 
 TIM_HandleTypeDef htim3;
 
@@ -98,6 +103,8 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_ADC2_Init(void);
+static void MX_DAC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -176,6 +183,8 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
+  MX_ADC2_Init();
+  MX_DAC_Init();
   /* USER CODE BEGIN 2 */
 
   //Grab NeuroModulation amplitude at startup.
@@ -185,6 +194,9 @@ int main(void)
 	  uint16_t init_reading = HAL_ADC_GetValue(&hadc1);
 	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
   }
+
+  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_FREQ_INTENSITY);
+  HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
   //TODO: Some method to get FREQ selection here.
   T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
@@ -309,6 +321,94 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+  /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
+  */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc2.Init.ScanConvMode = DISABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
+  */
+  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC2_Init 2 */
+
+  /* USER CODE END ADC2_Init 2 */
+
+}
+
+/**
+  * @brief DAC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DAC_Init(void)
+{
+
+  /* USER CODE BEGIN DAC_Init 0 */
+
+  /* USER CODE END DAC_Init 0 */
+
+  DAC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN DAC_Init 1 */
+
+  /* USER CODE END DAC_Init 1 */
+  /**DAC Initialization 
+  */
+  hdac.Instance = DAC;
+  if (HAL_DAC_Init(&hdac) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /**DAC channel OUT1 config 
+  */
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DAC_Init 2 */
+
+  /* USER CODE END DAC_Init 2 */
 
 }
 
@@ -450,6 +550,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	case STIM_FREQ_TRIGGER_HIGH:
 		if(TEST_FLAG){
 			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_TEST_INTENSITY);
+			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 			STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
 		}else{
 			__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
@@ -465,6 +567,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	case STIM_TEST_TRIGGER_HIGH:
 		TEST_FLAG = false;
 		__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_FREQ_INTENSITY);
+		HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 		STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
 	    break;
 
