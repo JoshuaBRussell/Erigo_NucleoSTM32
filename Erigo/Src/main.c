@@ -186,7 +186,9 @@ int main(void)
   MX_ADC2_Init();
   MX_DAC_Init();
   /* USER CODE BEGIN 2 */
+  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
 
+  }
   //Grab NeuroModulation amplitude at startup.
   HAL_ADC_Start(&hadc1);
   if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
