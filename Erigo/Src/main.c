@@ -122,7 +122,9 @@ uint32_t Num_of_Threshold_Counts = 0;
 uint16_t T_LOW = 0; //Initially based on freq.
 uint16_t T_PERIOD = 0;
 
-uint32_t NM_Amplitude = 0;
+uint16_t Test_Amplitude = 0;
+uint16_t NM_Amplitude = 0;
+uint16_t Freq_Sel = 0;
 
 uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
@@ -154,6 +156,30 @@ bool all_below_threshold(){
 
 bool should_test_pulse_be_produced(){
 	return (POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold());
+}
+
+bool check_message_indicators(uint8_t* buffer){
+	//Start message is received?
+	if(buffer[0] == SERIAL_START_CHAR){
+		//End Message is received?
+		if(buffer[SERIAL_MESSAGE_SIZE-1] == SERIAL_END_CHAR){
+			//Delimiters in correct location?
+			if(buffer[3]==SERIAL_DELIMITER && buffer[6]==SERIAL_DELIMITER){
+                return true;
+			}
+		}
+	}
+	return false;
+}
+
+//"valx" so it is generic.
+void parse_message(uint8_t* buffer, uint16_t* const val1, uint16_t* const val2, uint16_t* const val3){
+	//get Test Amplitude[1,2]
+    *val1 = ((uint16_t)buffer[1] << 8) | ((uint16_t)buffer[2]);
+	//Get NM_Amplitude[4,5]
+    *val2 = ((uint16_t)buffer[4] << 8) | ((uint16_t)buffer[5]);
+	//Get Freq. Selection[7,8]
+    *val3 = ((uint16_t)buffer[7] << 8) | ((uint16_t)buffer[8]);
 }
 /* USER CODE END 0 */
 
@@ -198,7 +224,11 @@ int main(void)
 	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
 	  memset(&buffer[0], 0, sizeof(buffer));
 	  HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
-	  if(buffer[0]==SERIAL_START_CHAR){
+	  //Check message 'indicators'
+	  if(check_message_indicators(buffer)){
+		  //parse message
+          parse_message(buffer, &Test_Amplitude, &NM_Amplitude, &Freq_Sel);
+		  //Transmit message back so control program knows everything is okay.
 		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
 	  }
   }
