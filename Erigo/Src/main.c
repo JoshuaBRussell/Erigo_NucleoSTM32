@@ -44,6 +44,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdbool.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,6 +69,12 @@
 
 #define STIM_LOW_PRETEST_IN_COUNTS 16715
 #define STIM_LOW_POSTTEST_IN_COUNTS 16715
+
+#define SERIAL_START_CHAR 0x02 //Start Of Text in ASCII
+#define SERIAL_END_CHAR 0x03   //End Of Text in ASCII
+#define SERIAL_DELIMITER 0xF1
+
+#define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -183,8 +190,17 @@ int main(void)
   MX_TIM3_Init();
   MX_DAC_Init();
   /* USER CODE BEGIN 2 */
-  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
-
+//  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
+//
+//  }
+  for (;;)
+  {
+	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
+	  memset(&buffer[0], 0, sizeof(buffer));
+	  HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	  if(buffer[0]==SERIAL_START_CHAR){
+		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	  }
   }
   //Grab NeuroModulation amplitude at startup.
   HAL_ADC_Start(&hadc1);
@@ -484,6 +500,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(SCOPE_Pin_GPIO_Port, &GPIO_InitStruct);
+
+  __USART2_CLK_ENABLE();
+
+  /**USART2 GPIO Configuration
+  PA2     ------> USART2_TX
+  PA3     ------> USART2_RX
+  */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
