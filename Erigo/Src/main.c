@@ -75,6 +75,8 @@
 #define SERIAL_DELIMITER 0xF1
 
 #define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
+
+#define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -122,9 +124,9 @@ uint32_t Num_of_Threshold_Counts = 0;
 uint16_t T_LOW = 0; //Initially based on freq.
 uint16_t T_PERIOD = 0;
 
-uint16_t Test_Amplitude = 0;
-uint16_t NM_Amplitude = 0;
-uint16_t Freq_Sel = 0;
+uint16_t Test_Amplitude_in_Counts = 0;
+uint16_t NM_Amplitude_in_Counts = 0;
+uint16_t Freq_Sel_in_Counts = 0;
 
 uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
@@ -181,6 +183,12 @@ void parse_message(uint8_t* buffer, uint16_t* const val1, uint16_t* const val2, 
 	//Get Freq. Selection[7,8]
     *val3 = ((uint16_t)buffer[7] << 8) | ((uint16_t)buffer[8]);
 }
+
+//This is only called at the onset of the program a couple of times. Otherwise the
+//cast and float multiplicatin would be considered "not pretty."
+void milliamps_to_DAC_counts(const uint16_t in_milliamp, uint16_t* dac_counts){
+    *dac_counts =  (uint16_t)(MILLIAMP_TO_DAC_CONV_FACTOR * (float)in_milliamp);
+}
 /* USER CODE END 0 */
 
 /**
@@ -219,7 +227,7 @@ int main(void)
 //  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
 //
 //  }
-  for (;;)
+  for (int i = 0; i < 5; i++)
   {
 	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
 	  memset(&buffer[0], 0, sizeof(buffer));
@@ -227,7 +235,12 @@ int main(void)
 	  //Check message 'indicators'
 	  if(check_message_indicators(buffer)){
 		  //parse message
-          parse_message(buffer, &Test_Amplitude, &NM_Amplitude, &Freq_Sel);
+		  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
+          parse_message(buffer, &test_amp_ma, &nm_amp_ma, &freq_sel);
+          //Convert
+          milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+          milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+
 		  //Transmit message back so control program knows everything is okay.
 		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
 	  }
@@ -240,7 +253,7 @@ int main(void)
 	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
   }
 
-  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_FREQ_INTENSITY);
+  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
   //TODO: Some method to get FREQ selection here.
@@ -564,7 +577,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	case STIM_FREQ_TRIGGER_HIGH:
 		if(TEST_FLAG){
 			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_TEST_INTENSITY);
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
 			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 			STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
 		}else{
@@ -581,7 +594,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	case STIM_TEST_TRIGGER_HIGH:
 		TEST_FLAG = false;
 		__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_FREQ_INTENSITY);
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
 		HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 		STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
 	    break;
