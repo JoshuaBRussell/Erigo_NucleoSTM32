@@ -94,6 +94,14 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+enum FREQ_OPTIONS{
+	FREQ_12_5Hz = 0,
+	FREQ_25Hz,
+	FREQ_50Hz,
+	FREQ_100Hz
+
+};
+
 enum WF_STATE{
     STIM_FREQ_TRIGGER_LOW = 0,
 	STIM_FREQ_TRIGGER_HIGH,
@@ -241,6 +249,25 @@ int main(void)
           milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
           milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
 
+          switch(freq_sel){
+          case FREQ_12_5Hz :
+        	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+		      break;
+
+          case FREQ_25Hz :
+        	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+        	  break;
+
+          case FREQ_50Hz :
+        	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+        	  break;
+
+          case FREQ_100Hz :
+        	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+        	  break;
+          }
+          T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+
 		  //Transmit message back so control program knows everything is okay.
 		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
 	  }
@@ -255,10 +282,6 @@ int main(void)
 
   HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-
-  //TODO: Some method to get FREQ selection here.
-  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-  T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
   HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END 2 */
