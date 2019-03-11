@@ -235,13 +235,16 @@ int main(void)
 //  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
 //
 //  }
-  for (int i = 0; i < 5; i++)
+
+  bool mess_success = false;
+  while(!mess_success)
   {
 	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
 	  memset(&buffer[0], 0, sizeof(buffer));
 	  HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
 	  //Check message 'indicators'
 	  if(check_message_indicators(buffer)){
+		  mess_success = true;
 		  //parse message
 		  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
           parse_message(buffer, &test_amp_ma, &nm_amp_ma, &freq_sel);
