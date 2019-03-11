@@ -45,6 +45,8 @@
 /* USER CODE BEGIN Includes */
 #include "stdbool.h"
 #include "string.h"
+
+#include "signal_proc_util.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,9 +56,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define STIM_TRIGGER_THRESHOLD 2000
-#define STIM_TRIGGER_TOLERANCE 50
-#define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
 #define STIM_FREQ_INTENSITY 1000
 #define STIM_TEST_INTENSITY 2500
@@ -145,27 +144,8 @@ void add_value(uint16_t val){
 	Stim_Trigg_Index = (Stim_Trigg_Index+1)%5;
 }
 
-bool all_above_threshold(){
-	for(int i = 0; i < 5; i++){
-		if(Stim_Trigg_Values[i] < (STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE))
-		{
-            return false;
-		}
-	}
-	return true;
-}
-
-bool all_below_threshold(){
-	for(int i = 0; i < 5; i++){
-		if(Stim_Trigg_Values[i] > (STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE)){
-            return false;
-		}
-	}
-	return true;
-}
-
 bool should_test_pulse_be_produced(){
-	return (POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold());
+	return (POS_BELOW_THRESHOLD&&all_above_threshold(Stim_Trigg_Values, 5)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(Stim_Trigg_Values, 5));
 }
 
 bool check_message_indicators(uint8_t* buffer){
