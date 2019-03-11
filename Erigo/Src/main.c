@@ -44,6 +44,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdbool.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,6 +69,14 @@
 
 #define STIM_LOW_PRETEST_IN_COUNTS 16715
 #define STIM_LOW_POSTTEST_IN_COUNTS 16715
+
+#define SERIAL_START_CHAR 0x02 //Start Of Text in ASCII
+#define SERIAL_END_CHAR 0x03   //End Of Text in ASCII
+#define SERIAL_DELIMITER 0xF1
+
+#define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
+
+#define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -77,7 +86,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
 
 DAC_HandleTypeDef hdac;
 
@@ -86,6 +94,14 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+enum FREQ_OPTIONS{
+	FREQ_12_5Hz = 0,
+	FREQ_25Hz,
+	FREQ_50Hz,
+	FREQ_100Hz
+
+};
+
 enum WF_STATE{
     STIM_FREQ_TRIGGER_LOW = 0,
 	STIM_FREQ_TRIGGER_HIGH,
@@ -103,7 +119,6 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_ADC2_Init(void);
 static void MX_DAC_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -117,7 +132,9 @@ uint32_t Num_of_Threshold_Counts = 0;
 uint16_t T_LOW = 0; //Initially based on freq.
 uint16_t T_PERIOD = 0;
 
-uint32_t NM_Amplitude = 0;
+uint16_t Test_Amplitude_in_Counts = 0;
+uint16_t NM_Amplitude_in_Counts = 0;
+uint16_t Freq_Sel_in_Counts = 0;
 
 uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
@@ -149,6 +166,36 @@ bool all_below_threshold(){
 
 bool should_test_pulse_be_produced(){
 	return (POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold());
+}
+
+bool check_message_indicators(uint8_t* buffer){
+	//Start message is received?
+	if(buffer[0] == SERIAL_START_CHAR){
+		//End Message is received?
+		if(buffer[SERIAL_MESSAGE_SIZE-1] == SERIAL_END_CHAR){
+			//Delimiters in correct location?
+			if(buffer[3]==SERIAL_DELIMITER && buffer[6]==SERIAL_DELIMITER){
+                return true;
+			}
+		}
+	}
+	return false;
+}
+
+//"valx" so it is generic.
+void parse_message(uint8_t* buffer, uint16_t* const val1, uint16_t* const val2, uint16_t* const val3){
+	//get Test Amplitude[1,2]
+    *val1 = ((uint16_t)buffer[1] << 8) | ((uint16_t)buffer[2]);
+	//Get NM_Amplitude[4,5]
+    *val2 = ((uint16_t)buffer[4] << 8) | ((uint16_t)buffer[5]);
+	//Get Freq. Selection[7,8]
+    *val3 = ((uint16_t)buffer[7] << 8) | ((uint16_t)buffer[8]);
+}
+
+//This is only called at the onset of the program a couple of times. Otherwise the
+//cast and float multiplicatin would be considered "not pretty."
+void milliamps_to_DAC_counts(const uint16_t in_milliamp, uint16_t* dac_counts){
+    *dac_counts =  (uint16_t)(MILLIAMP_TO_DAC_CONV_FACTOR * (float)in_milliamp);
 }
 /* USER CODE END 0 */
 
@@ -183,10 +230,51 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
-  MX_ADC2_Init();
   MX_DAC_Init();
   /* USER CODE BEGIN 2 */
+//  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
+//
+//  }
 
+  bool mess_success = false;
+  while(!mess_success)
+  {
+	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
+	  memset(&buffer[0], 0, sizeof(buffer));
+	  HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	  //Check message 'indicators'
+	  if(check_message_indicators(buffer)){
+		  mess_success = true;
+		  //parse message
+		  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
+          parse_message(buffer, &test_amp_ma, &nm_amp_ma, &freq_sel);
+          //Convert
+          milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+          milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+
+          switch(freq_sel){
+          case FREQ_12_5Hz :
+        	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+		      break;
+
+          case FREQ_25Hz :
+        	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+        	  break;
+
+          case FREQ_50Hz :
+        	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+        	  break;
+
+          case FREQ_100Hz :
+        	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+        	  break;
+          }
+          T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+
+		  //Transmit message back so control program knows everything is okay.
+		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	  }
+  }
   //Grab NeuroModulation amplitude at startup.
   HAL_ADC_Start(&hadc1);
   if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
@@ -195,12 +283,8 @@ int main(void)
 	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
   }
 
-  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_FREQ_INTENSITY);
+  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-
-  //TODO: Some method to get FREQ selection here.
-  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-  T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
   HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END 2 */
@@ -321,56 +405,6 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * @brief ADC2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC2_Init(void)
-{
-
-  /* USER CODE BEGIN ADC2_Init 0 */
-
-  /* USER CODE END ADC2_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC2_Init 1 */
-
-  /* USER CODE END ADC2_Init 1 */
-  /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
-  */
-  hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc2.Init.ScanConvMode = DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
-  hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.NbrOfConversion = 1;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
-  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-  */
-  sConfig.Channel = ADC_CHANNEL_4;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC2_Init 2 */
-
-  /* USER CODE END ADC2_Init 2 */
 
 }
 
@@ -516,6 +550,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -529,6 +569,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(SCOPE_Pin_GPIO_Port, &GPIO_InitStruct);
+
+  __USART2_CLK_ENABLE();
+
+  /**USART2 GPIO Configuration
+  PA2     ------> USART2_TX
+  PA3     ------> USART2_RX
+  */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
@@ -550,7 +603,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	case STIM_FREQ_TRIGGER_HIGH:
 		if(TEST_FLAG){
 			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_TEST_INTENSITY);
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
 			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 			STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
 		}else{
@@ -567,7 +620,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	case STIM_TEST_TRIGGER_HIGH:
 		TEST_FLAG = false;
 		__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, STIM_FREQ_INTENSITY);
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
 		HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 		STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
 	    break;
