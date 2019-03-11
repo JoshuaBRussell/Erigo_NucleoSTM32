@@ -1,15 +1,23 @@
+/** @file signal_proc_util.h
+ *
+ * @brief Simple/ Custom signal processing functions.
+ *
+ * @par
+ *
+ */
+
 #ifndef SIG_PROC_UTIL_H
 #define SIG_PROC_UTIL_H
 
+/* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
 #include "stdbool.h"
 
-#define STIM_TRIGGER_THRESHOLD 2000
-#define STIM_TRIGGER_TOLERANCE 50
-#define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
+/* Defines -------------------------------------------------------------------*/
 
 
-bool all_above_threshold(const uint16_t* arr,const uint16_t arr_size);
-bool all_below_threshold(const uint16_t* arr,const uint16_t arr_size);
+/* Function Prototypes -------------------------------------------------------*/
+bool all_above_threshold(const uint16_t* arr, const uint16_t arr_size, const uint16_t threshold);
+bool all_below_threshold(const uint16_t* arr, const uint16_t arr_size, const uint16_t threshold);
 
 #endif

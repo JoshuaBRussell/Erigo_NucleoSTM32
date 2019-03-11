@@ -56,6 +56,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define STIM_TRIGGER_THRESHOLD 2000
+#define STIM_TRIGGER_TOLERANCE 50
+#define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
 #define STIM_FREQ_INTENSITY 1000
 #define STIM_TEST_INTENSITY 2500
@@ -145,7 +148,8 @@ void add_value(uint16_t val){
 }
 
 bool should_test_pulse_be_produced(){
-	return (POS_BELOW_THRESHOLD&&all_above_threshold(Stim_Trigg_Values, 5)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(Stim_Trigg_Values, 5));
+	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
+	return (POS_BELOW_THRESHOLD&&all_above_threshold(Stim_Trigg_Values, 5, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(Stim_Trigg_Values, 5, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
 
 bool check_message_indicators(uint8_t* buffer){
