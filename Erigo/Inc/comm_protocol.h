@@ -14,6 +14,9 @@
 #include "stdbool.h"
 #include "stdint.h"
 
+bool is_comm_success();
+
+void comm_get_control_params(uint16_t* val1, uint16_t* val2, uint16_t* val3);
 
 /* Checks if specific 'markers' are in the correct location of the incoming message.
  *

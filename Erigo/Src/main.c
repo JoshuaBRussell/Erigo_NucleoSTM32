@@ -73,10 +73,6 @@
 #define STIM_LOW_PRETEST_IN_COUNTS 16715
 #define STIM_LOW_POSTTEST_IN_COUNTS 16715
 
-#define SERIAL_START_CHAR 0x02 //Start Of Text in ASCII
-#define SERIAL_END_CHAR 0x03   //End Of Text in ASCII
-#define SERIAL_DELIMITER 0xF1
-
 #define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
 
 #define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
@@ -197,45 +193,36 @@ int main(void)
 //
 //  }
 
-  bool mess_success = false;
-  while(!mess_success)
+  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
+  while(!is_comm_success())
   {
-	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
-	  memset(&buffer[0], 0, sizeof(buffer));
-	  HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
-	  //Check message 'indicators'
-	  if(check_message_indicators(buffer, SERIAL_MESSAGE_SIZE)){
-		  mess_success = true;
-		  //parse message
-		  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
-          parse_message(buffer, SERIAL_MESSAGE_SIZE, &test_amp_ma, &nm_amp_ma, &freq_sel);
-          //Convert
-          milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-          milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
-
-          switch(freq_sel){
-          case FREQ_12_5Hz :
-        	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
-		      break;
-
-          case FREQ_25Hz :
-        	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
-        	  break;
-
-          case FREQ_50Hz :
-        	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-        	  break;
-
-          case FREQ_100Hz :
-        	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
-        	  break;
-          }
-          T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
-
-		  //Transmit message back so control program knows everything is okay.
-		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
-	  }
+	  comm_get_control_params(&test_amp_ma, &nm_amp_ma, &freq_sel);
   }
+
+      //Convert
+      milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+      milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+
+      switch(freq_sel){
+      case FREQ_12_5Hz :
+    	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+	      break;
+
+      case FREQ_25Hz :
+    	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+    	  break;
+
+      case FREQ_50Hz :
+    	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+    	  break;
+
+      case FREQ_100Hz :
+    	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+    	  break;
+      }
+      T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+
+
   //Grab NeuroModulation amplitude at startup.
   HAL_ADC_Start(&hadc1);
   if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
