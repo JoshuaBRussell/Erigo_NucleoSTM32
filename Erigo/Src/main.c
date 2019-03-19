@@ -45,6 +45,9 @@
 /* USER CODE BEGIN Includes */
 #include "stdbool.h"
 #include "string.h"
+
+#include "signal_proc_util.h"
+#include "comm_protocol.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,10 +72,6 @@
 
 #define STIM_LOW_PRETEST_IN_COUNTS 16715
 #define STIM_LOW_POSTTEST_IN_COUNTS 16715
-
-#define SERIAL_START_CHAR 0x02 //Start Of Text in ASCII
-#define SERIAL_END_CHAR 0x03   //End Of Text in ASCII
-#define SERIAL_DELIMITER 0xF1
 
 #define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
 
@@ -140,56 +139,14 @@ uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
 bool POS_BELOW_THRESHOLD = false;
 
-void add_value(uint16_t val){
+void CIRCLE_BUFF_add_value(uint16_t val){
 	Stim_Trigg_Values[Stim_Trigg_Index] = val;
 	Stim_Trigg_Index = (Stim_Trigg_Index+1)%5;
 }
 
-bool all_above_threshold(){
-	for(int i = 0; i < 5; i++){
-		if(Stim_Trigg_Values[i] < (STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE))
-		{
-            return false;
-		}
-	}
-	return true;
-}
-
-bool all_below_threshold(){
-	for(int i = 0; i < 5; i++){
-		if(Stim_Trigg_Values[i] > (STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE)){
-            return false;
-		}
-	}
-	return true;
-}
-
 bool should_test_pulse_be_produced(){
-	return (POS_BELOW_THRESHOLD&&all_above_threshold()) || (!POS_BELOW_THRESHOLD&&all_below_threshold());
-}
-
-bool check_message_indicators(uint8_t* buffer){
-	//Start message is received?
-	if(buffer[0] == SERIAL_START_CHAR){
-		//End Message is received?
-		if(buffer[SERIAL_MESSAGE_SIZE-1] == SERIAL_END_CHAR){
-			//Delimiters in correct location?
-			if(buffer[3]==SERIAL_DELIMITER && buffer[6]==SERIAL_DELIMITER){
-                return true;
-			}
-		}
-	}
-	return false;
-}
-
-//"valx" so it is generic.
-void parse_message(uint8_t* buffer, uint16_t* const val1, uint16_t* const val2, uint16_t* const val3){
-	//get Test Amplitude[1,2]
-    *val1 = ((uint16_t)buffer[1] << 8) | ((uint16_t)buffer[2]);
-	//Get NM_Amplitude[4,5]
-    *val2 = ((uint16_t)buffer[4] << 8) | ((uint16_t)buffer[5]);
-	//Get Freq. Selection[7,8]
-    *val3 = ((uint16_t)buffer[7] << 8) | ((uint16_t)buffer[8]);
+	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
+	return (POS_BELOW_THRESHOLD&&all_above_threshold(Stim_Trigg_Values, 5, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(Stim_Trigg_Values, 5, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
 
 //This is only called at the onset of the program a couple of times. Otherwise the
@@ -236,45 +193,36 @@ int main(void)
 //
 //  }
 
-  bool mess_success = false;
-  while(!mess_success)
+  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
+  while(!is_comm_success())
   {
-	  uint8_t buffer[SERIAL_MESSAGE_SIZE];
-	  memset(&buffer[0], 0, sizeof(buffer));
-	  HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
-	  //Check message 'indicators'
-	  if(check_message_indicators(buffer)){
-		  mess_success = true;
-		  //parse message
-		  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
-          parse_message(buffer, &test_amp_ma, &nm_amp_ma, &freq_sel);
-          //Convert
-          milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-          milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
-
-          switch(freq_sel){
-          case FREQ_12_5Hz :
-        	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
-		      break;
-
-          case FREQ_25Hz :
-        	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
-        	  break;
-
-          case FREQ_50Hz :
-        	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-        	  break;
-
-          case FREQ_100Hz :
-        	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
-        	  break;
-          }
-          T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
-
-		  //Transmit message back so control program knows everything is okay.
-		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
-	  }
+	  comm_get_control_params(&test_amp_ma, &nm_amp_ma, &freq_sel);
   }
+
+      //Convert
+      milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+      milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+
+      switch(freq_sel){
+      case FREQ_12_5Hz :
+    	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+	      break;
+
+      case FREQ_25Hz :
+    	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+    	  break;
+
+      case FREQ_50Hz :
+    	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+    	  break;
+
+      case FREQ_100Hz :
+    	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+    	  break;
+      }
+      T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+
+
   //Grab NeuroModulation amplitude at startup.
   HAL_ADC_Start(&hadc1);
   if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
@@ -296,7 +244,7 @@ int main(void)
 	HAL_ADC_Start(&hadc1);
 	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
 	{
-		add_value(HAL_ADC_GetValue(&hadc1));
+		CIRCLE_BUFF_add_value(HAL_ADC_GetValue(&hadc1));
 		if(should_test_pulse_be_produced())
 		{
 			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
@@ -569,19 +517,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(SCOPE_Pin_GPIO_Port, &GPIO_InitStruct);
-
-  __USART2_CLK_ENABLE();
-
-  /**USART2 GPIO Configuration
-  PA2     ------> USART2_TX
-  PA3     ------> USART2_RX
-  */
-  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
