@@ -139,7 +139,7 @@ uint32_t Stim_Trigg_Index = 0;
 uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
 bool POS_BELOW_THRESHOLD = false;
 
-void add_value(uint16_t val){
+void CIRCLE_BUFF_add_value(uint16_t val){
 	Stim_Trigg_Values[Stim_Trigg_Index] = val;
 	Stim_Trigg_Index = (Stim_Trigg_Index+1)%5;
 }
@@ -244,7 +244,7 @@ int main(void)
 	HAL_ADC_Start(&hadc1);
 	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
 	{
-		add_value(HAL_ADC_GetValue(&hadc1));
+		CIRCLE_BUFF_add_value(HAL_ADC_GetValue(&hadc1));
 		if(should_test_pulse_be_produced())
 		{
 			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
