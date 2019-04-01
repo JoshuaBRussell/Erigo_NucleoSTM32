@@ -144,6 +144,9 @@ uint32_t gADC_reading = 0;
 
 //ADC Buffer
 uint32_t adc_buffer_array[ADC_BUFFER_SIZE] = {0};
+//Declare circular buffer for position ADC values
+circ_buff_handle position_adc_meas;
+
 bool POS_BELOW_THRESHOLD = false;
 
 bool should_test_pulse_be_produced(){
@@ -196,9 +199,6 @@ int main(void)
 //
 //  }
 
-  //Instantiate circular buffer for position ADC values
-  circ_buff_handle position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
-
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
   {
@@ -229,42 +229,23 @@ int main(void)
       T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
 
-  //Grab NeuroModulation amplitude at startup.
-//  HAL_ADC_Start_IT(&hadc1);
-//
-//  if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
-//  {
-//	  uint16_t init_reading = HAL_ADC_GetValue(&hadc1);
-//	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
-//  }
+  //Define the circular buffer
+  position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
 
+  //Set initial value of stim amplitude.
   HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_ADC_Start_IT(&hadc1);
-  while(1){};
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HAL_ADC_Start(&hadc1);
-	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
-	{
-		circ_buff_put(position_adc_meas , HAL_ADC_GetValue(&hadc1));
-		if(should_test_pulse_be_produced())
-		{
-			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
-			{
-				TEST_FLAG = true;
-			}
-			Num_of_Threshold_Counts++;
-			POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
-		}
-	}
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -581,7 +562,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 
 	switch(STIM_STATE)
 	{
@@ -626,7 +607,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	gADC_reading = HAL_ADC_GetValue(&hadc1);
-	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+	//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+
+	circ_buff_put(position_adc_meas , gADC_reading);
+	if(should_test_pulse_be_produced())
+	{
+		if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+		{
+			TEST_FLAG = true;
+		}
+		Num_of_Threshold_Counts++;
+		POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
+	}
 }
 
 /* USER CODE END 4 */
