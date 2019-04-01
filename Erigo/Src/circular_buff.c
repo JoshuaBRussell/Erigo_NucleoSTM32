@@ -1,7 +1,6 @@
 /*Cicular Buffer Implementaiton File
   Joshua B. Russell  
 */
-
 #include "circular_buff.h"
 #include <stdint.h>
 #include <stdbool.h>
