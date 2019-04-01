@@ -1,3 +1,4 @@
 Binaries
 /Debug/
 *.xml
+.settings

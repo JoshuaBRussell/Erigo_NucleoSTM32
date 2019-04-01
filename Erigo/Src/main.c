@@ -39,6 +39,7 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include "circular_buff.h"
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -76,6 +77,8 @@
 #define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
 
 #define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
+
+#define ADC_BUFFER_SIZE 5
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -135,18 +138,13 @@ uint16_t Test_Amplitude_in_Counts = 0;
 uint16_t NM_Amplitude_in_Counts = 0;
 uint16_t Freq_Sel_in_Counts = 0;
 
-uint32_t Stim_Trigg_Index = 0;
-uint16_t Stim_Trigg_Values[5] = {0,0,0,0,0};
+//ADC Buffer
+uint32_t adc_buffer_array[ADC_BUFFER_SIZE] = {0};
 bool POS_BELOW_THRESHOLD = false;
-
-void CIRCLE_BUFF_add_value(uint16_t val){
-	Stim_Trigg_Values[Stim_Trigg_Index] = val;
-	Stim_Trigg_Index = (Stim_Trigg_Index+1)%5;
-}
 
 bool should_test_pulse_be_produced(){
 	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
-	return (POS_BELOW_THRESHOLD&&all_above_threshold(Stim_Trigg_Values, 5, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(Stim_Trigg_Values, 5, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
+	return (POS_BELOW_THRESHOLD&&all_above_threshold(adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
 
 //This is only called at the onset of the program a couple of times. Otherwise the
@@ -192,6 +190,9 @@ int main(void)
 //  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
 //
 //  }
+
+  //Instantiate circular buffer for position ADC values
+  circ_buff_handle position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
 
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
@@ -244,7 +245,7 @@ int main(void)
 	HAL_ADC_Start(&hadc1);
 	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
 	{
-		CIRCLE_BUFF_add_value(HAL_ADC_GetValue(&hadc1));
+		circ_buff_put(position_adc_meas , HAL_ADC_GetValue(&hadc1));
 		if(should_test_pulse_be_produced())
 		{
 			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))

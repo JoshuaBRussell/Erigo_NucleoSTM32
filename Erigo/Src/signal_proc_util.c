@@ -14,7 +14,7 @@
  * threshold - threshold value
  * ret: true if all are above the threshold, false if not
  */
-bool all_above_threshold(const uint16_t* arr,const uint16_t arr_size, const uint16_t threshold){
+bool all_above_threshold(const uint32_t* arr,const uint32_t arr_size, const uint16_t threshold){
 	for(int i = 0; i < arr_size; i++){
 		if(*(arr+i) < (threshold))
 		{
@@ -30,7 +30,7 @@ bool all_above_threshold(const uint16_t* arr,const uint16_t arr_size, const uint
  * threshold - threshold value
  * ret: true if all are above the threshold, false if not
  */
-bool all_below_threshold(const uint16_t* arr,const uint16_t arr_size, const uint16_t threshold){
+bool all_below_threshold(const uint32_t* arr,const uint32_t arr_size, const uint16_t threshold){
 	for(int i = 0; i < arr_size; i++){
 		if(*(arr+i) > (threshold)){
             return false;

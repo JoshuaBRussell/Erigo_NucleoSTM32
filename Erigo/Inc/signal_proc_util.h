@@ -17,7 +17,7 @@
 
 
 /* Function Prototypes -------------------------------------------------------*/
-bool all_above_threshold(const uint16_t* arr, const uint16_t arr_size, const uint16_t threshold);
-bool all_below_threshold(const uint16_t* arr, const uint16_t arr_size, const uint16_t threshold);
+bool all_above_threshold(const uint32_t* arr, const uint32_t arr_size, const uint16_t threshold);
+bool all_below_threshold(const uint32_t* arr, const uint32_t arr_size, const uint16_t threshold);
 
 #endif
