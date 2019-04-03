@@ -39,7 +39,6 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "circular_buff.h"
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -47,6 +46,7 @@
 #include "stdbool.h"
 #include "string.h"
 
+#include "circular_buff.h"
 #include "signal_proc_util.h"
 #include "comm_protocol.h"
 /* USER CODE END Includes */
@@ -91,6 +91,7 @@ ADC_HandleTypeDef hadc1;
 
 DAC_HandleTypeDef hdac;
 
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
@@ -122,6 +123,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_DAC_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -138,8 +140,13 @@ uint16_t Test_Amplitude_in_Counts = 0;
 uint16_t NM_Amplitude_in_Counts = 0;
 uint16_t Freq_Sel_in_Counts = 0;
 
+uint32_t gADC_reading = 0;
+
 //ADC Buffer
 uint32_t adc_buffer_array[ADC_BUFFER_SIZE] = {0};
+//Declare circular buffer for position ADC values
+circ_buff_handle position_adc_meas;
+
 bool POS_BELOW_THRESHOLD = false;
 
 bool should_test_pulse_be_produced(){
@@ -186,13 +193,11 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM3_Init();
   MX_DAC_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 //  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
 //
 //  }
-
-  //Instantiate circular buffer for position ADC values
-  circ_buff_handle position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
 
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
@@ -224,38 +229,23 @@ int main(void)
       T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
 
-  //Grab NeuroModulation amplitude at startup.
-  HAL_ADC_Start(&hadc1);
-  if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
-  {
-	  uint16_t init_reading = HAL_ADC_GetValue(&hadc1);
-	  POS_BELOW_THRESHOLD = (init_reading<STIM_TRIGGER_THRESHOLD);
-  }
+  //Define the circular buffer
+  position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
 
+  //Set initial value of stim amplitude.
   HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
   HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HAL_ADC_Start(&hadc1);
-	if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
-	{
-		circ_buff_put(position_adc_meas , HAL_ADC_GetValue(&hadc1));
-		if(should_test_pulse_be_produced())
-		{
-			if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
-			{
-				TEST_FLAG = true;
-			}
-			Num_of_Threshold_Counts++;
-			POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
-		}
-	}
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -332,8 +322,8 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = DISABLE;
@@ -392,6 +382,50 @@ static void MX_DAC_Init(void)
   /* USER CODE BEGIN DAC_Init 2 */
 
   /* USER CODE END DAC_Init 2 */
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 100;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 8316;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
 
 }
 
@@ -526,47 +560,69 @@ static void MX_GPIO_Init(void)
 //----ISR Callbacks----//
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 
-	switch(STIM_STATE)
-	{
-	case STIM_FREQ_TRIGGER_LOW:
-		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-		STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
-		break;
 
-	case STIM_FREQ_TRIGGER_HIGH:
-		if(TEST_FLAG){
-			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
+	if (htim==&htim3) {  //This should only run for TIM3's Period Elapse
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+		HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+
+		switch(STIM_STATE)
+		{
+		case STIM_FREQ_TRIGGER_LOW:
+			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+			STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+			break;
+
+		case STIM_FREQ_TRIGGER_HIGH:
+			if(TEST_FLAG){
+				__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
+				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
+				HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+				STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
+			}else{
+				__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
+				STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+			}
+			break;
+
+		case STIM_TEST_TRIGGER_LOW_PRETEST:
+			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+			STIM_STATE = STIM_TEST_TRIGGER_HIGH;
+			break;
+
+		case STIM_TEST_TRIGGER_HIGH:
+			TEST_FLAG = false;
+			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
 			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-			STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
-		}else{
-			__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
-            STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+			STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
+			break;
+
+		case STIM_TEST_TRIGGER_LOW_POSTTEST:
+			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+			STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+			break;
 		}
-		break;
-
-	case STIM_TEST_TRIGGER_LOW_PRETEST:
-		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-        STIM_STATE = STIM_TEST_TRIGGER_HIGH;
-		break;
-
-	case STIM_TEST_TRIGGER_HIGH:
-		TEST_FLAG = false;
-		__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
-		HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-		STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
-	    break;
-
-	case STIM_TEST_TRIGGER_LOW_POSTTEST:
-		__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-        STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
-		break;
 	}
 
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	gADC_reading = HAL_ADC_GetValue(&hadc1);
+	//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+
+	circ_buff_put(position_adc_meas , gADC_reading);
+	if(should_test_pulse_be_produced())
+	{
+		if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+		{
+			TEST_FLAG = true;
+		}
+		Num_of_Threshold_Counts++;
+		POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
+	}
 }
 
 /* USER CODE END 4 */
