@@ -6,14 +6,18 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "stm32f4xx_hal.h"
+#include "comm_protocol.h"
+
+extern UART_HandleTypeDef huart2;
 
 uint16_t min_tx_space(uint8_t port){
-    return 255;
+    return SERIAL_MESSAGE_SIZE;
 }
 
 
 void min_tx_byte(uint8_t port, uint8_t byte){
-    printf("TX: %u\n", byte);
+	 HAL_UART_Transmit(&huart2, &byte, 1, HAL_MAX_DELAY);
 }
 
 

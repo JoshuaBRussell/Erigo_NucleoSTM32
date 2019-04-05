@@ -3,6 +3,7 @@
 // Use authorized under the MIT license.
 
 #include "min.h"
+#include "min_user.h"
 
 #define TRANSPORT_FIFO_SIZE_FRAMES_MASK             ((uint8_t)((1U << TRANSPORT_FIFO_SIZE_FRAMES_BITS) - 1U))
 #define TRANSPORT_FIFO_SIZE_FRAME_DATA_MASK         ((uint16_t)((1U << TRANSPORT_FIFO_SIZE_FRAME_DATA_BITS) - 1U))
@@ -107,7 +108,7 @@ static void on_wire_bytes(struct min_context *self, uint8_t id_control, uint8_t 
     self->tx_header_byte_countdown = 2U;
     crc32_init_context(&self->tx_checksum);
 
-    min_tx_start(self->port);
+    //min_tx_start(self->port);
 
     // Header is 3 bytes; because unstuffed will reset receiver immediately
     min_tx_byte(self->port, HEADER_BYTE);
@@ -140,7 +141,7 @@ static void on_wire_bytes(struct min_context *self, uint8_t id_control, uint8_t 
     // Ensure end-of-frame doesn't contain 0xaa and confuse search for start-of-frame
     min_tx_byte(self->port, EOF_BYTE);
 
-    min_tx_finished(self->port);
+    //min_tx_finished(self->port);
 }
 
 #ifdef TRANSPORT_PROTOCOL

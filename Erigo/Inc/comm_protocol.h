@@ -14,6 +14,11 @@
 #include "stdbool.h"
 #include "stdint.h"
 
+#define SERIAL_MESSAGE_SIZE 15//Includes MIN Framing[11] (techinically 10 w/o transport protocol, but
+                              //ON_WIRE_SIZE(p) in min.c includes to seq byte so its counted here too.))
+                              //
+                              //and max length of data to be sent (to be determined)
+
 bool is_comm_success();
 
 void comm_get_control_params(uint16_t* val1, uint16_t* val2, uint16_t* val3);

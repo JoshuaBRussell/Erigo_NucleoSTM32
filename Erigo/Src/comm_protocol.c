@@ -16,8 +16,6 @@
 #define SERIAL_END_CHAR 0x03   //End Of Text in ASCII
 #define SERIAL_DELIMITER 0xF1
 
-#define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
-
 
 extern UART_HandleTypeDef huart2;
 

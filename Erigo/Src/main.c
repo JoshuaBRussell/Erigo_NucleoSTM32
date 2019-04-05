@@ -49,6 +49,9 @@
 #include "circular_buff.h"
 #include "signal_proc_util.h"
 #include "comm_protocol.h"
+#include "min.h"
+#include "min_user.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -114,6 +117,8 @@ enum WF_STATE{
 
 };
 enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+
+struct min_context min_ctx;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -198,6 +203,14 @@ int main(void)
 //  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
 //
 //  }
+
+  //Init of MIN Testing//
+  min_init_context(&min_ctx, 0);
+  char tx_buff[]= {0x03, 0x01, 0x01, 0x03};
+  while(1){
+      min_send_frame(&min_ctx, 0x01, (uint8_t *)tx_buff, 4);
+      HAL_Delay(100);
+  }
 
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
