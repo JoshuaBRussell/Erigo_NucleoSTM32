@@ -206,11 +206,9 @@ int main(void)
 
   //Init of MIN Testing//
   min_init_context(&min_ctx, 0);
-  char tx_buff[]= {0x03, 0x01, 0x01, 0x03};
-  while(1){
-      min_send_frame(&min_ctx, 0x01, (uint8_t *)tx_buff, 4);
-      HAL_Delay(100);
-  }
+
+//  //uint8_t mock_rec_buff[] = {170, 170, 170, 1, 4, 3, 1, 1, 3, 28, 123, 113, 228, 85};
+
 
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
@@ -218,28 +216,32 @@ int main(void)
 	  comm_get_control_params(&test_amp_ma, &nm_amp_ma, &freq_sel);
   }
 
-      //Convert
-      milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-      milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+  //temp
+  test_amp_ma = 100;
+  nm_amp_ma = 50;
+  freq_sel = 3;
+  //Convert
+  milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+  milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
 
-      switch(freq_sel){
-      case FREQ_12_5Hz :
-    	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
-	      break;
+  switch(freq_sel){
+  case FREQ_12_5Hz :
+	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+	  break;
 
-      case FREQ_25Hz :
-    	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
-    	  break;
+  case FREQ_25Hz :
+	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+	  break;
 
-      case FREQ_50Hz :
-    	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-    	  break;
+  case FREQ_50Hz :
+	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+	  break;
 
-      case FREQ_100Hz :
-    	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
-    	  break;
-      }
-      T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+  case FREQ_100Hz :
+	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+	  break;
+  }
+  T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
 
   //Define the circular buffer

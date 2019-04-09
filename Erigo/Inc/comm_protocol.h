@@ -14,10 +14,9 @@
 #include "stdbool.h"
 #include "stdint.h"
 
-#define SERIAL_MESSAGE_SIZE 15//Includes MIN Framing[11] (techinically 10 w/o transport protocol, but
-                              //ON_WIRE_SIZE(p) in min.c includes to seq byte so its counted here too.))
-                              //
-                              //and max length of data to be sent (to be determined)
+#define SERIAL_MESSAGE_SIZE 14
+#define WAV_GEN_MSG_IDENTIFIER 0x01
+#define DATA_LOG_MSG_IDENTIFIER 0x02
 
 bool is_comm_success();
 
@@ -38,6 +37,6 @@ bool check_message_indicators(uint8_t* buffer, uint16_t buffer_size);
  * val1-3: Generic var names. Data can be anything.
  */
 //"valx" so it is generic.
-void parse_message(uint8_t* buffer, uint16_t buffer_size, uint16_t* const val1, uint16_t* const val2, uint16_t* const val3);
+void parse_message(uint8_t msg_id);
 
 #endif /* COMM_PROTOCOL_H_ */
