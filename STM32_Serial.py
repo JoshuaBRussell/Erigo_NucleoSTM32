@@ -1,9 +1,14 @@
 import serial
 import time
 
+
+from min import MINTransportSerial
+
 START_BYTE = b'\x02' #ASCII Start of Text
 DELIMITER = b'\xF1'  #
 END_BYTE = b'\x03'   #ASCII End of Text
+
+SEND_ATTEMPS = 5
 
 TEST_AMPLITUDE_MA  = 300
 NM_AMPITUDE_MA = 80
@@ -20,7 +25,7 @@ def main(Test_Amplitude_mA, NM_Amplitude_mA, Freq_Sel):
         print(data)
         print("Sending Data...%d", i)
         print(ser.write(data))
-        print("READ: ", ser.read(1))
+        print("READ: ", ser.read(16))
         time.sleep(1)
 
 
@@ -28,4 +33,12 @@ def main(Test_Amplitude_mA, NM_Amplitude_mA, Freq_Sel):
 
 
 if __name__ == "__main__":
-    main(TEST_AMPLITUDE_MA, NM_AMPITUDE_MA, FREQ_SEL)
+    #main(TEST_AMPLITUDE_MA, NM_AMPITUDE_MA, FREQ_SEL)
+
+    min_handler = MINTransportSerial("COM3", 115200)
+    
+    for i in range(SEND_ATTEMPS):
+        min_handler.send_frame(1, (3).to_bytes(1, byteorder="big") + (3).to_bytes(1, byteorder="big") + (3).to_bytes(1, byteorder="big") + (3).to_bytes(1, byteorder="big"))
+        time.sleep(1)
+        
+    
