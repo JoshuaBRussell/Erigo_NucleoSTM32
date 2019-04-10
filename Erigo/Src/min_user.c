@@ -22,8 +22,8 @@ void min_tx_byte(uint8_t port, uint8_t byte){
 
 
 void min_application_handler(uint8_t min_id, uint8_t *min_payload, uint8_t len_payload, uint8_t port){
-	//if valild MIN messege parse it
-	parse_message(min_id);
+	//parse message
+	parse_message(min_id, min_payload, len_payload);
 
 	//if valid command messege, comm_success = true
 	HAL_UART_Transmit(&huart2, &min_id, 1, HAL_MAX_DELAY);

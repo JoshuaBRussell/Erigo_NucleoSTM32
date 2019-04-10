@@ -18,6 +18,15 @@
 #define WAV_GEN_MSG_IDENTIFIER 0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02
 
+
+typedef struct WAv_CMD_DATA{
+    uint16_t test_amp_ma;
+	uint16_t nm_amp_ma;
+	uint16_t freq_sel;
+}WAV_CMD_DATA;
+
+extern WAV_CMD_DATA CMD_DATA;
+
 bool is_comm_success();
 
 void comm_get_control_params(uint16_t* val1, uint16_t* val2, uint16_t* val3);
@@ -37,6 +46,6 @@ bool check_message_indicators(uint8_t* buffer, uint16_t buffer_size);
  * val1-3: Generic var names. Data can be anything.
  */
 //"valx" so it is generic.
-void parse_message(uint8_t msg_id);
+void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload);
 
 #endif /* COMM_PROTOCOL_H_ */

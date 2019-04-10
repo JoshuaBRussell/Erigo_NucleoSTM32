@@ -119,6 +119,7 @@ enum WF_STATE{
 enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
 struct min_context min_ctx;
+WAV_CMD_DATA CMD_DATA;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -204,10 +205,8 @@ int main(void)
 //
 //  }
 
-  //Init of MIN Testing//
+  //Init of MIN CTX//
   min_init_context(&min_ctx, 0);
-
-//  //uint8_t mock_rec_buff[] = {170, 170, 170, 1, 4, 3, 1, 1, 3, 28, 123, 113, 228, 85};
 
 
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
@@ -216,10 +215,10 @@ int main(void)
 	  comm_get_control_params(&test_amp_ma, &nm_amp_ma, &freq_sel);
   }
 
-  //temp
-  test_amp_ma = 100;
-  nm_amp_ma = 50;
-  freq_sel = 3;
+
+  test_amp_ma = CMD_DATA.test_amp_ma;
+  nm_amp_ma = CMD_DATA.nm_amp_ma;
+  freq_sel = CMD_DATA.freq_sel;
   //Convert
   milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
   milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);

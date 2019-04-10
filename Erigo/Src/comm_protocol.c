@@ -39,8 +39,12 @@ void comm_get_control_params(uint16_t* val1, uint16_t* val2, uint16_t* val3){
 
 }
 
-void parse_message(uint8_t msg_id){
+void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
      if(msg_id == WAV_GEN_MSG_IDENTIFIER){
     	 comm_success = true;
+
+    	 CMD_DATA.test_amp_ma = ((uint16_t)min_payload[2] << 8) | ((uint16_t)min_payload[1]);
+    	 CMD_DATA.nm_amp_ma =   ((uint16_t)min_payload[4] << 8) | ((uint16_t)min_payload[3]);
+    	 CMD_DATA.freq_sel =    ((uint16_t)min_payload[6] << 8) | ((uint16_t)min_payload[5]);
      }
 }

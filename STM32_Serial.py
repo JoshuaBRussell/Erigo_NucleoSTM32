@@ -36,9 +36,13 @@ if __name__ == "__main__":
     #main(TEST_AMPLITUDE_MA, NM_AMPITUDE_MA, FREQ_SEL)
 
     min_handler = MINTransportSerial("COM3", 115200)
-    
+    data_array = [100, 50, 0]
     for i in range(SEND_ATTEMPS):
-        min_handler.send_frame(1, (3).to_bytes(1, byteorder="big") + (3).to_bytes(1, byteorder="big") + (3).to_bytes(1, byteorder="big") + (3).to_bytes(1, byteorder="big"))
+        data = b''
+        for i in range(len(data_array)):
+            data+=data_array[i].to_bytes(2, byteorder="big")
+        min_handler.send_frame(1, data)
+        print(data)
         time.sleep(1)
-        
+
     
