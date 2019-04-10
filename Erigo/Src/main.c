@@ -119,7 +119,7 @@ enum WF_STATE{
 enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
 struct min_context min_ctx;
-WAV_CMD_DATA CMD_DATA;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -212,13 +212,14 @@ int main(void)
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
   {
-	  comm_get_control_params(&test_amp_ma, &nm_amp_ma, &freq_sel);
+	  comm_get_control_params();
   }
 
-
+  //Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
   test_amp_ma = CMD_DATA.test_amp_ma;
   nm_amp_ma = CMD_DATA.nm_amp_ma;
   freq_sel = CMD_DATA.freq_sel;
+
   //Convert
   milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
   milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);

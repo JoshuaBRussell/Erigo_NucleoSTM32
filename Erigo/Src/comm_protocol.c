@@ -20,11 +20,13 @@ extern struct min_context min_ctx;
 
 static bool comm_success = false;
 
+WAV_CMD_DATA CMD_DATA;
+
 bool is_comm_success(){
 	return comm_success;
 }
 
-void comm_get_control_params(uint16_t* val1, uint16_t* val2, uint16_t* val3){
+void comm_get_control_params(){
 
     while(!comm_success)
     {
