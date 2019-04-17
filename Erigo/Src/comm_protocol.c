@@ -10,65 +10,52 @@
 #include "stm32f4xx_hal.h"
 #include "string.h"
 #include "stdbool.h"
+#include "min.h"
 
 /* Defines -------------------------------------------------------------------*/
-#define SERIAL_START_CHAR 0x02 //Start Of Text in ASCII
-#define SERIAL_END_CHAR 0x03   //End Of Text in ASCII
-#define SERIAL_DELIMITER 0xF1
-
-#define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
 
 
 extern UART_HandleTypeDef huart2;
+extern struct min_context min_ctx;
 
 static bool comm_success = false;
+static uint8_t CMD_ID = 0;
+
+WAV_CMD_DATA CMD_DATA;
 
 bool is_comm_success(){
 	return comm_success;
 }
 
-void comm_get_control_params(uint16_t* val1, uint16_t* val2, uint16_t* val3){
+uint8_t comm_get_control_params(){
 
     while(!comm_success)
     {
-	uint8_t buffer[SERIAL_MESSAGE_SIZE];
-	memset(&buffer[0], 0, sizeof(buffer));
-	HAL_UART_Receive(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	uint8_t rec_buffer[SERIAL_MESSAGE_SIZE];
+	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
 
+	HAL_UART_Receive(&huart2, rec_buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
 
-	  //Check message 'indicators'
-	  if(check_message_indicators(buffer, SERIAL_MESSAGE_SIZE)){
-		  comm_success = true;
-
-	      parse_message(buffer, SERIAL_MESSAGE_SIZE, val1, val2, val3);
-
-		  //Transmit message back so control program knows everything is okay.
-		  HAL_UART_Transmit(&huart2, buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
-	  }
+    min_poll(&min_ctx, rec_buffer, SERIAL_MESSAGE_SIZE);
 
     }
+
+    return CMD_ID;
+
 }
 
-bool check_message_indicators(uint8_t* buffer, uint16_t buffer_size){
-	//Start message is received?
-	if(buffer[0] == SERIAL_START_CHAR){
-		//End Message is received?
-		if(buffer[SERIAL_MESSAGE_SIZE-1] == SERIAL_END_CHAR){
-			//Delimiters in correct location?
-			if(buffer[3]==SERIAL_DELIMITER && buffer[6]==SERIAL_DELIMITER){
-                return true;
-			}
-		}
-	}
-	return false;
-}
+void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
+     if(msg_id == WAV_GEN_MSG_IDENTIFIER){
+         CMD_ID = msg_id;
 
+    	 CMD_DATA.test_amp_ma = ((uint16_t)min_payload[2] << 8) | ((uint16_t)min_payload[1]);
+    	 CMD_DATA.nm_amp_ma =   ((uint16_t)min_payload[4] << 8) | ((uint16_t)min_payload[3]);
+    	 CMD_DATA.freq_sel =    ((uint16_t)min_payload[6] << 8) | ((uint16_t)min_payload[5]);
 
-void parse_message(uint8_t* buffer, uint16_t buffer_size, uint16_t* const val1, uint16_t* const val2, uint16_t* const val3){
-	//get Test Amplitude[1,2]
-    *val1 = ((uint16_t)buffer[1] << 8) | ((uint16_t)buffer[2]);
-	//Get NM_Amplitude[4,5]
-    *val2 = ((uint16_t)buffer[4] << 8) | ((uint16_t)buffer[5]);
-	//Get Freq. Selection[7,8]
-    *val3 = ((uint16_t)buffer[7] << 8) | ((uint16_t)buffer[8]);
+    	 comm_success = true;
+     }else if (msg_id == DATA_LOG_MSG_IDENTIFIER){
+    	 CMD_ID = msg_id;
+
+    	 comm_success = true;
+     }
 }

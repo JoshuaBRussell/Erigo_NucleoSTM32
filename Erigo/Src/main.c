@@ -49,6 +49,9 @@
 #include "circular_buff.h"
 #include "signal_proc_util.h"
 #include "comm_protocol.h"
+#include "min.h"
+#include "min_user.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -114,6 +117,9 @@ enum WF_STATE{
 
 };
 enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+
+struct min_context min_ctx;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -199,46 +205,64 @@ int main(void)
 //
 //  }
 
+  //Init of MIN CTX//
+  min_init_context(&min_ctx, 0);
+
+  uint8_t CMD_ID = NO_MSG_IDENTIFIER;
   uint16_t test_amp_ma, nm_amp_ma, freq_sel;
   while(!is_comm_success())
   {
-	  comm_get_control_params(&test_amp_ma, &nm_amp_ma, &freq_sel);
+	  CMD_ID = comm_get_control_params();
   }
 
-      //Convert
-      milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-      milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+  if (CMD_ID == WAV_GEN_MSG_IDENTIFIER) {
+	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
+	test_amp_ma = CMD_DATA.test_amp_ma;
+	nm_amp_ma = CMD_DATA.nm_amp_ma;
+	freq_sel = CMD_DATA.freq_sel;
 
-      switch(freq_sel){
-      case FREQ_12_5Hz :
-    	  T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
-	      break;
+	//Convert
+	milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+	milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
 
-      case FREQ_25Hz :
-    	  T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
-    	  break;
+	switch(freq_sel){
+	case FREQ_12_5Hz :
+		T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+		break;
 
-      case FREQ_50Hz :
-    	  T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-    	  break;
+	case FREQ_25Hz :
+		T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+		break;
 
-      case FREQ_100Hz :
-    	  T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
-    	  break;
-      }
-      T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+	case FREQ_50Hz :
+		T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+		break;
+
+	case FREQ_100Hz :
+		T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+		break;
+	}
+	T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
 
 
-  //Define the circular buffer
-  position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
+	//Define the circular buffer
+	position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
 
-  //Set initial value of stim amplitude.
-  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
-  HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+	//Set initial value of stim amplitude.
+	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
-  HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_ADC_Start_IT(&hadc1);
+	HAL_TIM_Base_Start_IT(&htim3);
+	HAL_TIM_Base_Start_IT(&htim2);
+	HAL_ADC_Start_IT(&hadc1);
+  }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
+	  //while(1){
+	  uint8_t tx_buff[] = {1,2,3,4};
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 4);
+	  HAL_Delay(100);
+	  //}
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
