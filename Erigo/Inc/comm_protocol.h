@@ -14,8 +14,9 @@
 #include "stdbool.h"
 #include "stdint.h"
 
-#define SERIAL_MESSAGE_SIZE 14
-#define WAV_GEN_MSG_IDENTIFIER 0x01
+#define SERIAL_MESSAGE_SIZE 15
+#define NO_MSG_IDENTIFIER       0x00;
+#define WAV_GEN_MSG_IDENTIFIER  0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02
 
 
@@ -33,7 +34,7 @@ bool is_comm_success();
  * Will get cmd message and then transfer data into the appropriate struct.
  *
  */
-void comm_get_control_params();
+uint8_t comm_get_control_params();
 
 /* Parses buffer for data.
  *
