@@ -14,7 +14,7 @@
 #include "stdbool.h"
 #include "stdint.h"
 
-#define SERIAL_MESSAGE_SIZE 15
+#define SERIAL_MESSAGE_SIZE 255
 #define NO_MSG_IDENTIFIER       0x00;
 #define WAV_GEN_MSG_IDENTIFIER  0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02
