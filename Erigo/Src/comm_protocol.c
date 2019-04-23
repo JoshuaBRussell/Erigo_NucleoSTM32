@@ -31,12 +31,12 @@ uint8_t comm_get_control_params(){
 
     while(!comm_success)
     {
-	uint8_t rec_buffer[SERIAL_MESSAGE_SIZE];
+	uint8_t rec_buffer[CMD_MESSAGE_SIZE];
 	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
 
-	HAL_UART_Receive(&huart2, rec_buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	HAL_UART_Receive(&huart2, rec_buffer, CMD_MESSAGE_SIZE, HAL_MAX_DELAY);
 
-    min_poll(&min_ctx, rec_buffer, SERIAL_MESSAGE_SIZE);
+    min_poll(&min_ctx, rec_buffer, CMD_MESSAGE_SIZE);
 
     }
 
