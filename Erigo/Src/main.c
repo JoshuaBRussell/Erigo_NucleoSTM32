@@ -256,11 +256,26 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_ADC_Start_IT(&hadc1);
   }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
-	  //while(1){
-	  uint8_t tx_buff[] = {1,2,3,4};
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 4);
+	  while(1){
+
+	  //send ACK of CMD
+	  uint8_t tx_buff[5] = {1,2,3, 4, 5};
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
 	  HAL_Delay(100);
-	  //}
+//
+      uint8_t data_tx_buff[255] = {1, 0, 1, 0, 1};
+      uint8_t data_tx1_buff[255] = {2, 0, 1, 0, 1};
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx_buff, 250);
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
+	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 5);
+	  min_send_frame(&min_ctx, 0x03, data_tx1_buff, 5);
+
+
+	  }
   }
 
   /* USER CODE END 2 */
