@@ -1,7 +1,7 @@
 import serial
 import time
 
-
+import matplotlib.pyplot as plt
 from min import MINTransportSerial
 
 START_BYTE = b'\x02' #ASCII Start of Text
@@ -9,6 +9,11 @@ DELIMITER = b'\xF1'  #
 END_BYTE = b'\x03'   #ASCII End of Text
 
 SEND_ATTEMPS = 5
+
+#Msg IDs
+END_OF_DATA_ID = 3
+
+BYTES_PER_DATA_ITEM = 2
 
 TEST_AMPLITUDE_MA  = 300
 NM_AMPITUDE_MA = 80
@@ -34,7 +39,7 @@ def wait_for_frames(min_handler: MINTransportSerial):
         if frames:
             return frames
 
-def send_CMD(cmd):
+def send_CMD(min_handler: MINTransportSerial, cmd):
     """Sends a MIN frame with the CMD as the MIN identifier byte. Then waits for an ACK from the uC with the same CMD."""
     #junk data at the moment
     data = b''
@@ -50,7 +55,7 @@ def send_CMD(cmd):
     print("Waiting for ACK...")
     frames = wait_for_ACK(min_handler, timeout = 1.0)
 
-    #There should only be one frame, but just in case/wait for ACK returns a lit of frames
+    #There should only be one frame, but just in case/"wait for ACK" returns a lit of frames
     for frame in frames:
         if frame.min_id == cmd:
             print("ACK Received...")
@@ -58,6 +63,34 @@ def send_CMD(cmd):
         else:   
             print("ACK Failure...Wrong ACK CMD type returned...")
             return False
+
+
+def get_Data(min_handler: MINTransportSerial):
+    data_xfer_complete = False
+    raw_bin_data = b''
+    while(not(data_xfer_complete)):
+        #Polls to see if MIN frames have been received 
+        rx_frames = wait_for_frames(min_handler)
+
+        #Look at the frames to see if an "End of Data" has been sent
+        #If not, keep polling. Ignores any payload data after "End of Data" Msg.
+        for frame in rx_frames:
+            if(frame.min_id == END_OF_DATA_ID):
+                data_xfer_complete = True
+                break #Ensure that data retrieved of/after the final data cmd message is not considered part of the data
+
+            raw_bin_data += frame.payload
+
+    return raw_bin_data
+
+def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
+    """Takes individual bytes and concatenates them into int type based on num_bytes_per_int"""
+    data = []
+    for i in range(len(raw_bin_data)//(num_bytes_per_int)):
+        i = num_bytes_per_int*i
+        data.append(int.from_bytes(raw_bin_data[i:i+2], byteorder='big'))
+
+    return data
 
 def main(Test_Amplitude_mA, NM_Amplitude_mA, Freq_Sel):
     ser = serial.Serial("COM3", 115200, timeout = 1.0)
@@ -87,34 +120,21 @@ if __name__ == "__main__":
     while(not(COMM_SUCC)):
         print()
         print()
-        COMM_SUCC = send_CMD(CMD)
+        COMM_SUCC = send_CMD(min_handler, CMD)
 
     #Collect data after ACK from uC
-    data_xfer_complete = False
-    raw_bin_data = b''
-    while(not(data_xfer_complete)):
-        #Polls to see if MIN frames have been received 
-        rx_frames = wait_for_frames(min_handler)
+    raw_bin_data = get_Data(min_handler)
+ 
 
-        #Look at the frames to see if an "End of Data" has been sent
-        #If not, keep polling. Ignores any payload data after "End of Data" Msg.
-        for frame in rx_frames:
-            if(frame.min_id == 3):
-                data_xfer_complete = True
-                break #Ensure that data retrieved after the final data message is not considered part of the data
-
-            raw_bin_data += frame.payload
-            
-
-            
-
-    #Process Raw Data
-    print("Full Data: ", raw_bin_data)
+    #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
+    data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
 
     #Analyze Data
     print("ADC Data Collected.")
     
     #Display Analog Data
+    plt.plot(data)
+    plt.show()
 
     print("Comm was a Succ")
 
