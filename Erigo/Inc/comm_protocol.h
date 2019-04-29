@@ -21,10 +21,6 @@
 #define DATA_LOG_MSG_IDENTIFIER 0x02
 #define ADC_OUTPUT_END_OF_DATA  0x03
 
-#define BYTES_PER_ADC_SAMPLE 4
-#define DATA_OUT_PAYLOAD_SIZE 200 //Chosen so that it is a multiple of BYTES_PER_ADC_SAMPLE. Must be lower than MIN MAX_PAYLOAD
-#define SAMPLES_PER_FRAME (DATA_OUT_PAYLOAD_SIZE/BYTES_PER_ADC_SAMPLE)
-
 
 typedef struct WAv_CMD_DATA{
     uint16_t test_amp_ma;
@@ -50,5 +46,7 @@ uint8_t comm_get_control_params();
  */
 //"valx" so it is generic.
 void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload);
+
+void comm_send_data(uint32_t* data_buffer, uint32_t buff_len);
 
 #endif /* COMM_PROTOCOL_H_ */

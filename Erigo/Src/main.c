@@ -80,7 +80,7 @@
 #define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 
 #define ADC_BUFFER_SIZE 5
-#define ADC_DATA_AMOUNT 1253 //Very temp name
+#define ADC_DATA_AMOUNT 1000 //Very temp name
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -254,61 +254,26 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim3);
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_ADC_Start_IT(&hadc1);
-  }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
+   }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
 	  while(1){
 
-	  //send ACK of CMD
-	  uint8_t tx_buff[5] = {1,2,3, 4, 5};
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
-	  HAL_Delay(100);
-//
-      uint8_t data_tx_buff[255] = {1, 0, 1, 0, 1};
-      uint8_t data_tx1_buff[255] = {0,0,0,5, 1};
+	      //send ACK of CMD
+	      uint8_t tx_buff[5] = {1,2,3, 4, 5};
+	      min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
+	      HAL_Delay(10);
 
-      //----Collect ADC Data----//
-      uint32_t sample_buff[ADC_DATA_AMOUNT];
-      //Fill buffer with junk data
-      for(int g = 0; g < ADC_DATA_AMOUNT; g++){
-    		  sample_buff[g] = g;
+          //----Collect ADC Data----//
+          uint32_t sample_buff[ADC_DATA_AMOUNT];
+          //Fill buffer with junk data
+          for(int g = 0; g < ADC_DATA_AMOUNT; g++){
+    	      sample_buff[g] = g;
+          }
+
+          //Send Data to Host
+          comm_send_data(sample_buff, ADC_DATA_AMOUNT);
       }
 
-      uint32_t num_of_MIN_frames = 0;
-      volatile uint8_t excess_samples = 0;
-      //Find # of MIN frames needed to send data
-      if((ADC_DATA_AMOUNT*BYTES_PER_ADC_SAMPLE)%(DATA_OUT_PAYLOAD_SIZE)==0){
-    	  num_of_MIN_frames = (ADC_DATA_AMOUNT*BYTES_PER_ADC_SAMPLE)/(DATA_OUT_PAYLOAD_SIZE);
-      }else{
-    	  num_of_MIN_frames = (ADC_DATA_AMOUNT*BYTES_PER_ADC_SAMPLE)/(DATA_OUT_PAYLOAD_SIZE) + 1;
-    	  excess_samples = ((ADC_DATA_AMOUNT*BYTES_PER_ADC_SAMPLE)%(DATA_OUT_PAYLOAD_SIZE))/BYTES_PER_ADC_SAMPLE;
-      }
-
-      uint8_t temp_tx_buff[DATA_OUT_PAYLOAD_SIZE];
-      for(int i = 0; i < (ADC_DATA_AMOUNT - excess_samples); i+=SAMPLES_PER_FRAME){
-    	  for(int j = 0; j < SAMPLES_PER_FRAME; j ++){
-    		  temp_tx_buff[4*j]   = (sample_buff[i + j] >> 24) & 0xFF;
-    		  temp_tx_buff[4*j+1] = (sample_buff[i + j] >> 16) & 0xFF;
-    		  temp_tx_buff[4*j+2] = (sample_buff[i + j] >>  8) & 0xFF;
-    		  temp_tx_buff[4*j+3] = (sample_buff[i + j])       & 0xFF;
-    	  }
-    	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, temp_tx_buff, DATA_OUT_PAYLOAD_SIZE);
-      }
-      //Send any "excess bytes"
-      if(excess_samples > 0){
-		  for(int j = 0; j < excess_samples; j++){
-			  temp_tx_buff[4*j]   = (sample_buff[(ADC_DATA_AMOUNT - excess_samples) + j] >> 24) & 0xFF;
-			  temp_tx_buff[4*j+1] = (sample_buff[(ADC_DATA_AMOUNT - excess_samples) + j] >> 16) & 0xFF;
-			  temp_tx_buff[4*j+2] = (sample_buff[(ADC_DATA_AMOUNT - excess_samples) + j] >>  8) & 0xFF;
-			  temp_tx_buff[4*j+3] = (sample_buff[(ADC_DATA_AMOUNT - excess_samples) + j])       & 0xFF;
-		  }
-          min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, temp_tx_buff, excess_samples*BYTES_PER_ADC_SAMPLE);
-      }
-
-
-	  min_send_frame(&min_ctx, ADC_OUTPUT_END_OF_DATA, temp_tx_buff, 0);
-
-
-	  }
-  }
+   }
 
   /* USER CODE END 2 */
 
