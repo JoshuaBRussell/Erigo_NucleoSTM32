@@ -13,7 +13,9 @@
 #include "min.h"
 
 /* Defines -------------------------------------------------------------------*/
-
+#define BYTES_PER_ADC_SAMPLE 4
+#define DATA_OUT_PAYLOAD_SIZE 200 //Chosen so that it is a multiple of BYTES_PER_ADC_SAMPLE. Must be lower than MIN MAX_PAYLOAD
+#define SAMPLES_PER_FRAME (DATA_OUT_PAYLOAD_SIZE/BYTES_PER_ADC_SAMPLE)
 
 extern UART_HandleTypeDef huart2;
 extern struct min_context min_ctx;
@@ -31,12 +33,12 @@ uint8_t comm_get_control_params(){
 
     while(!comm_success)
     {
-	uint8_t rec_buffer[SERIAL_MESSAGE_SIZE];
+	uint8_t rec_buffer[CMD_MESSAGE_SIZE];
 	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
 
-	HAL_UART_Receive(&huart2, rec_buffer, SERIAL_MESSAGE_SIZE, HAL_MAX_DELAY);
+	HAL_UART_Receive(&huart2, rec_buffer, CMD_MESSAGE_SIZE, HAL_MAX_DELAY);
 
-    min_poll(&min_ctx, rec_buffer, SERIAL_MESSAGE_SIZE);
+    min_poll(&min_ctx, rec_buffer, CMD_MESSAGE_SIZE);
 
     }
 
@@ -58,4 +60,51 @@ void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
 
     	 comm_success = true;
      }
+}
+
+
+void comm_send_data(uint32_t* data_buffer, uint32_t buff_len){
+    //volatile b/c they kept getting optimized out
+	volatile uint32_t num_of_MIN_frames = 0;
+    volatile uint8_t excess_samples = 0;
+
+    //Find # of MIN frames needed to send data
+    if((buff_len*BYTES_PER_ADC_SAMPLE)%(DATA_OUT_PAYLOAD_SIZE)==0){
+	    num_of_MIN_frames = (buff_len*BYTES_PER_ADC_SAMPLE)/(DATA_OUT_PAYLOAD_SIZE);
+    }else{
+	    num_of_MIN_frames = (buff_len*BYTES_PER_ADC_SAMPLE)/(DATA_OUT_PAYLOAD_SIZE) + 1;
+	    excess_samples = ((buff_len*BYTES_PER_ADC_SAMPLE)%(DATA_OUT_PAYLOAD_SIZE))/BYTES_PER_ADC_SAMPLE;
+    }
+
+    //Fills frames with data the will completely fit.
+    //First loop acts as a window(window size is the number of samples that can fit in a frame)
+    //Second loop looks over each sample in that window, and places individual bytes into
+    //the tx/payload buffer
+    uint8_t temp_tx_buff[DATA_OUT_PAYLOAD_SIZE];
+    for(int i = 0; i < (buff_len - excess_samples); i+=SAMPLES_PER_FRAME){
+	    for(int j = 0; j < SAMPLES_PER_FRAME; j ++){
+	    	//The *4 multiplication steps through each sample, but in terms of bytes
+		    temp_tx_buff[4*j]   = (data_buffer[i + j] >> 24) & 0xFF;
+		    temp_tx_buff[4*j+1] = (data_buffer[i + j] >> 16) & 0xFF;
+		    temp_tx_buff[4*j+2] = (data_buffer[i + j] >>  8) & 0xFF;
+		    temp_tx_buff[4*j+3] = (data_buffer[i + j])       & 0xFF;
+	    }
+	    min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, temp_tx_buff, DATA_OUT_PAYLOAD_SIZE);
+    }
+
+
+    //Send any "excess bytes" in one last MIN frame if needed
+    if(excess_samples > 0){
+	    for(int j = 0; j < excess_samples; j++){
+		    temp_tx_buff[4*j]   = (data_buffer[(buff_len - excess_samples) + j] >> 24) & 0xFF;
+		    temp_tx_buff[4*j+1] = (data_buffer[(buff_len - excess_samples) + j] >> 16) & 0xFF;
+		    temp_tx_buff[4*j+2] = (data_buffer[(buff_len - excess_samples) + j] >>  8) & 0xFF;
+		    temp_tx_buff[4*j+3] = (data_buffer[(buff_len - excess_samples) + j])       & 0xFF;
+	    }
+	    min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, temp_tx_buff, excess_samples*BYTES_PER_ADC_SAMPLE);
+    }
+
+    //Send an empty MIN msg with a ID that signifies the end of data transfer
+    min_send_frame(&min_ctx, ADC_OUTPUT_END_OF_DATA, temp_tx_buff, 0);
+
 }

@@ -12,7 +12,10 @@
 extern UART_HandleTypeDef huart2;
 
 uint16_t min_tx_space(uint8_t port){
-    return SERIAL_MESSAGE_SIZE;
+    return SERIAL_MESSAGE_SIZE + 11; //Since TX is blocking for each individual byte sent, there is no need to
+                                     //check a non existent buffer. There is a limit on the size of the payload
+                                     //due to protocol restraints. The size returned currently is the max payload
+                                     //possible + framing bytes.
 }
 
 

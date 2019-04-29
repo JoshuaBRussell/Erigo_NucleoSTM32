@@ -14,10 +14,12 @@
 #include "stdbool.h"
 #include "stdint.h"
 
-#define SERIAL_MESSAGE_SIZE 15
+#define SERIAL_MESSAGE_SIZE 255
+#define CMD_MESSAGE_SIZE 15
 #define NO_MSG_IDENTIFIER       0x00;
 #define WAV_GEN_MSG_IDENTIFIER  0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02
+#define ADC_OUTPUT_END_OF_DATA  0x03
 
 
 typedef struct WAv_CMD_DATA{
@@ -44,5 +46,7 @@ uint8_t comm_get_control_params();
  */
 //"valx" so it is generic.
 void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload);
+
+void comm_send_data(uint32_t* data_buffer, uint32_t buff_len);
 
 #endif /* COMM_PROTOCOL_H_ */

@@ -77,11 +77,10 @@
 #define STIM_LOW_PRETEST_IN_COUNTS 16715
 #define STIM_LOW_POSTTEST_IN_COUNTS 16715
 
-#define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
-
 #define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 
 #define ADC_BUFFER_SIZE 5
+#define ADC_DATA_AMOUNT 1000 //Very temp name
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -255,13 +254,26 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim3);
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_ADC_Start_IT(&hadc1);
-  }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
-	  //while(1){
-	  uint8_t tx_buff[] = {1,2,3,4};
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 4);
-	  HAL_Delay(100);
-	  //}
-  }
+   }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
+	  while(1){
+
+	      //send ACK of CMD
+	      uint8_t tx_buff[5] = {1,2,3, 4, 5};
+	      min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
+	      HAL_Delay(10);
+
+          //----Collect ADC Data----//
+          uint32_t sample_buff[ADC_DATA_AMOUNT];
+          //Fill buffer with junk data
+          for(int g = 0; g < ADC_DATA_AMOUNT; g++){
+    	      sample_buff[g] = g;
+          }
+
+          //Send Data to Host
+          comm_send_data(sample_buff, ADC_DATA_AMOUNT);
+      }
+
+   }
 
   /* USER CODE END 2 */
 
