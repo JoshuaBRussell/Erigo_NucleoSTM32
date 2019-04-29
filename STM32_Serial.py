@@ -13,7 +13,7 @@ SEND_ATTEMPS = 5
 #Msg IDs
 END_OF_DATA_ID = 3
 
-BYTES_PER_DATA_ITEM = 2
+BYTES_PER_DATA_ITEM = 4
 
 TEST_AMPLITUDE_MA  = 300
 NM_AMPITUDE_MA = 80
@@ -88,7 +88,7 @@ def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
     data = []
     for i in range(len(raw_bin_data)//(num_bytes_per_int)):
         i = num_bytes_per_int*i
-        data.append(int.from_bytes(raw_bin_data[i:i+2], byteorder='big'))
+        data.append(int.from_bytes(raw_bin_data[i:i+num_bytes_per_int], byteorder='big'))
 
     return data
 
@@ -124,10 +124,11 @@ if __name__ == "__main__":
 
     #Collect data after ACK from uC
     raw_bin_data = get_Data(min_handler)
+    print(raw_bin_data)
  
-
     #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
     data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
+    print("len:", len(data))
 
     #Analyze Data
     print("ADC Data Collected.")

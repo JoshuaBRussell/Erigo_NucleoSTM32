@@ -19,6 +19,9 @@
 #define NO_MSG_IDENTIFIER       0x00;
 #define WAV_GEN_MSG_IDENTIFIER  0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02
+#define ADC_OUTPUT_END_OF_DATA  0x03
+
+#define BYTES_PER_ADC_SAMPLE 4
 
 
 typedef struct WAv_CMD_DATA{

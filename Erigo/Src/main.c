@@ -77,8 +77,6 @@
 #define STIM_LOW_PRETEST_IN_COUNTS 16715
 #define STIM_LOW_POSTTEST_IN_COUNTS 16715
 
-#define SERIAL_MESSAGE_SIZE 10//Includes start/end/delimiter bytes also
-
 #define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 
 #define ADC_BUFFER_SIZE 5
@@ -264,14 +262,47 @@ int main(void)
 	  HAL_Delay(100);
 //
       uint8_t data_tx_buff[255] = {1, 0, 1, 0, 1};
-      uint8_t data_tx1_buff[255] = {2, 0, 1, 0, 1};
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx_buff, 250);
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 250);
-	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, data_tx1_buff, 5);
+      uint8_t data_tx1_buff[255] = {0,0,0,5, 1};
+
+      //----Collect ADC Data----//
+      uint32_t sample_buff[1003];
+      //Fill buffer with junk data
+      for(int g = 0; g < 1003; g++){
+    		  sample_buff[g] = g;
+      }
+
+      uint32_t num_of_MIN_frames = 0;
+      volatile uint8_t excess_samples = 0;
+      //Find # of MIN frames needed to send data
+      if((1003*BYTES_PER_ADC_SAMPLE)%(200)==0){
+    	  num_of_MIN_frames = (1003*BYTES_PER_ADC_SAMPLE)/(200);
+      }else{
+    	  num_of_MIN_frames = (1003*BYTES_PER_ADC_SAMPLE)/(200) + 1;
+    	  excess_samples = ((1003*BYTES_PER_ADC_SAMPLE)%(200))/BYTES_PER_ADC_SAMPLE;
+      }
+
+      uint8_t temp_tx_buff[200];
+      for(int i = 0; i < 1000; i+=50){
+    	  for(int j = 0; j < 50; j ++){
+    		  temp_tx_buff[4*j]   = (sample_buff[i + j] >> 24) & 0xFF;
+    		  temp_tx_buff[4*j+1] = (sample_buff[i + j] >> 16) & 0xFF;
+    		  temp_tx_buff[4*j+2] = (sample_buff[i + j] >>  8) & 0xFF;
+    		  temp_tx_buff[4*j+3] = (sample_buff[i + j])       & 0xFF;
+    	  }
+    	  min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, temp_tx_buff, 200);
+      }
+      //Send any "excess bytes"
+      if(excess_samples > 0){
+		  for(int j = 0; j < excess_samples; j++){
+			  temp_tx_buff[4*j]   = (sample_buff[1000 + j] >> 24) & 0xFF;
+			  temp_tx_buff[4*j+1] = (sample_buff[1000 + j] >> 16) & 0xFF;
+			  temp_tx_buff[4*j+2] = (sample_buff[1000 + j] >>  8) & 0xFF;
+			  temp_tx_buff[4*j+3] = (sample_buff[1000 + j])       & 0xFF;
+		  }
+          min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, temp_tx_buff, excess_samples*BYTES_PER_ADC_SAMPLE);
+      }
+
+
 	  min_send_frame(&min_ctx, 0x03, data_tx1_buff, 5);
 
 
