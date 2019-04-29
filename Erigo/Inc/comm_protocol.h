@@ -22,6 +22,8 @@
 #define ADC_OUTPUT_END_OF_DATA  0x03
 
 #define BYTES_PER_ADC_SAMPLE 4
+#define DATA_OUT_PAYLOAD_SIZE 200 //Chosen so that it is a multiple of BYTES_PER_ADC_SAMPLE. Must be lower than MIN MAX_PAYLOAD
+#define SAMPLES_PER_FRAME (DATA_OUT_PAYLOAD_SIZE/BYTES_PER_ADC_SAMPLE)
 
 
 typedef struct WAv_CMD_DATA{
