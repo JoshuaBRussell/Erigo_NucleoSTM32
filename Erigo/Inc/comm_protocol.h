@@ -32,6 +32,8 @@ extern WAV_CMD_DATA CMD_DATA;
 
 bool is_comm_success();
 
+void comm_reset_seccess();
+
 /* Gets CMD message from whatever comm protocol is desired.
  * Will get cmd message and then transfer data into the appropriate struct.
  *
