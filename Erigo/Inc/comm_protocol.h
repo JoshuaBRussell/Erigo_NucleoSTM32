@@ -51,4 +51,7 @@ void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload);
 
 void comm_send_data(uint32_t* data_buffer, uint32_t buff_len);
 
+//Sends an ACK msg with the specified msg_id
+void comm_send_ACK(uint8_t msg_id);
+
 #endif /* COMM_PROTOCOL_H_ */

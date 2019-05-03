@@ -281,18 +281,16 @@ int main(void)
 	  	//Continues until uC Reset
 
 
-	     }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
-	          ERIGO_GLOBAL_STATE = ADC_OUTPUT;
+	    }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
 
-	          //Define the circular buffer
-	          meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
+	    	ERIGO_GLOBAL_STATE = ADC_OUTPUT;
 
-	          //send ACK of CMD
-	  	    uint8_t tx_buff[5] = {1,2,3, 4, 5};
-	  	    min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
-	  	    //HAL_Delay(10);
+	        //Define the circular buffer
+	        meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
 
 	  	    //----Collect ADC Data----//
+
+	        //Turn on HW Timer/ADC to collect samples
 	  	    HAL_TIM_Base_Start_IT(&htim2);
 	  	    HAL_ADC_Start_IT(&hadc1);
 

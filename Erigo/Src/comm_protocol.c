@@ -64,6 +64,14 @@ void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
 
     	 comm_success = true;
      }
+
+     //if a valid msg was received, send the appropriate ACK
+     if(comm_success==true){
+         comm_send_ACK(msg_id);
+     //if not, send an ERROR msg (not yet implemented)
+     }else{
+
+     }
 }
 
 
@@ -110,5 +118,13 @@ void comm_send_data(uint32_t* data_buffer, uint32_t buff_len){
 
     //Send an empty MIN msg with a ID that signifies the end of data transfer
     min_send_frame(&min_ctx, ADC_OUTPUT_END_OF_DATA, temp_tx_buff, 0);
+
+}
+
+void comm_send_ACK(uint8_t msg_id){
+	uint8_t null_buff = 0;  //For the ACK, no data needs to be sent,
+	                        //but a pointer must be supplied to min_send_frame as a buff
+
+	min_send_frame(&min_ctx, msg_id, &null_buff, 0);
 
 }
