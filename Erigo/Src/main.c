@@ -117,6 +117,14 @@ enum WF_STATE{
 };
 enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
+enum GLOBAL_STATE{
+    IDLE_STATE = 0,
+	STIM_CONTROL,
+	ADC_OUTPUT
+};
+enum GLOBAL_STATE ERIGO_GLOBAL_STATE = IDLE_STATE;
+
+
 struct min_context min_ctx;
 
 /* USER CODE END PV */
@@ -147,16 +155,25 @@ uint16_t Freq_Sel_in_Counts = 0;
 
 uint32_t gADC_reading = 0;
 
-//ADC Buffer
-uint32_t adc_buffer_array[ADC_BUFFER_SIZE] = {0};
-//Declare circular buffer for position ADC values
-circ_buff_handle position_adc_meas;
+//Two buffers are used since it is easier to use separate buffer buffer arrays/circ buffers
+//since they are different sizes.
+//Buffer for ADC samples while stimulating. This is used as the underlying array for the associated circ buff
+uint32_t stim_adc_buffer_array[ADC_BUFFER_SIZE] = {0};
+
+//Buffer for ADC samples while only measuring. This is used as the underlying array for the associated circ buff
+uint32_t meas_adc_buffer_array[ADC_DATA_AMOUNT] = {0};
+
+//Declare circular buffer for ADC values while stimulating
+circ_buff_handle stim_adc_circ_buff;
+
+//Declare circular buffer for ADC values while only measuring
+circ_buff_handle meas_adc_circ_buff;
 
 bool POS_BELOW_THRESHOLD = false;
 
 bool should_test_pulse_be_produced(){
 	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
-	return (POS_BELOW_THRESHOLD&&all_above_threshold(adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
+	return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
 
 //This is only called at the onset of the program a couple of times. Otherwise the
@@ -215,6 +232,8 @@ int main(void)
   }
 
   if (CMD_ID == WAV_GEN_MSG_IDENTIFIER) {
+	ERIGO_GLOBAL_STATE = STIM_CONTROL;
+
 	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
 	test_amp_ma = CMD_DATA.test_amp_ma;
 	nm_amp_ma = CMD_DATA.nm_amp_ma;
@@ -245,7 +264,7 @@ int main(void)
 
 
 	//Define the circular buffer
-	position_adc_meas = circ_buff_init(adc_buffer_array, ADC_BUFFER_SIZE);
+	stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
 
 	//Set initial value of stim amplitude.
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
@@ -255,23 +274,23 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_ADC_Start_IT(&hadc1);
    }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
-	  while(1){
+        ERIGO_GLOBAL_STATE = ADC_OUTPUT;
 
-	      //send ACK of CMD
-	      uint8_t tx_buff[5] = {1,2,3, 4, 5};
-	      min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
-	      HAL_Delay(10);
+        //Define the circular buffer
+        meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
 
-          //----Collect ADC Data----//
-          uint32_t sample_buff[ADC_DATA_AMOUNT];
-          //Fill buffer with junk data
-          for(int g = 0; g < ADC_DATA_AMOUNT; g++){
-    	      sample_buff[g] = g;
-          }
+        //send ACK of CMD
+	    uint8_t tx_buff[5] = {1,2,3, 4, 5};
+	    min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
+	    //HAL_Delay(10);
 
-          //Send Data to Host
-          comm_send_data(sample_buff, ADC_DATA_AMOUNT);
-      }
+	    //----Collect ADC Data----//
+	    HAL_TIM_Base_Start_IT(&htim2);
+	    HAL_ADC_Start_IT(&hadc1);
+	    while(!circ_buff_is_full(meas_adc_circ_buff));
+
+	    //Send Data to Host
+	    comm_send_data(meas_adc_buffer_array, ADC_DATA_AMOUNT);
 
    }
 
@@ -647,17 +666,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	gADC_reading = HAL_ADC_GetValue(&hadc1);
-	//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	circ_buff_put(position_adc_meas , gADC_reading);
-	if(should_test_pulse_be_produced())
-	{
-		if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
-		{
-			TEST_FLAG = true;
-		}
-		Num_of_Threshold_Counts++;
-		POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
+	if(ERIGO_GLOBAL_STATE == ADC_OUTPUT){
+		circ_buff_put(meas_adc_circ_buff, gADC_reading);
+	}
+	else if(ERIGO_GLOBAL_STATE == STIM_CONTROL){
+	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
+	    if(should_test_pulse_be_produced())
+	    {
+		    if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+		    {
+			    TEST_FLAG = true;
+		    }
+		    Num_of_Threshold_Counts++;
+		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
+	    }
 	}
 }
 
