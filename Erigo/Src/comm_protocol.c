@@ -29,6 +29,10 @@ bool is_comm_success(){
 	return comm_success;
 }
 
+void comm_reset_seccess(){
+	comm_success = false;
+}
+
 uint8_t comm_get_control_params(){
 
     while(!comm_success)

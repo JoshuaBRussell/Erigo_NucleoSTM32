@@ -217,82 +217,9 @@ int main(void)
   MX_DAC_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-//  while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)){
-//
-//  }
 
   //Init of MIN CTX//
   min_init_context(&min_ctx, 0);
-
-  uint8_t CMD_ID = NO_MSG_IDENTIFIER;
-  uint16_t test_amp_ma, nm_amp_ma, freq_sel;
-  while(!is_comm_success())
-  {
-	  CMD_ID = comm_get_control_params();
-  }
-
-  if (CMD_ID == WAV_GEN_MSG_IDENTIFIER) {
-	ERIGO_GLOBAL_STATE = STIM_CONTROL;
-
-	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
-	test_amp_ma = CMD_DATA.test_amp_ma;
-	nm_amp_ma = CMD_DATA.nm_amp_ma;
-	freq_sel = CMD_DATA.freq_sel;
-
-	//Convert
-	milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-	milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
-
-	switch(freq_sel){
-	case FREQ_12_5Hz :
-		T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
-		break;
-
-	case FREQ_25Hz :
-		T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
-		break;
-
-	case FREQ_50Hz :
-		T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-		break;
-
-	case FREQ_100Hz :
-		T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
-		break;
-	}
-	T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
-
-
-	//Define the circular buffer
-	stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
-
-	//Set initial value of stim amplitude.
-	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
-	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-
-	HAL_TIM_Base_Start_IT(&htim3);
-	HAL_TIM_Base_Start_IT(&htim2);
-	HAL_ADC_Start_IT(&hadc1);
-   }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
-        ERIGO_GLOBAL_STATE = ADC_OUTPUT;
-
-        //Define the circular buffer
-        meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
-
-        //send ACK of CMD
-	    uint8_t tx_buff[5] = {1,2,3, 4, 5};
-	    min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
-	    //HAL_Delay(10);
-
-	    //----Collect ADC Data----//
-	    HAL_TIM_Base_Start_IT(&htim2);
-	    HAL_ADC_Start_IT(&hadc1);
-	    while(!circ_buff_is_full(meas_adc_circ_buff));
-
-	    //Send Data to Host
-	    comm_send_data(meas_adc_buffer_array, ADC_DATA_AMOUNT);
-
-   }
 
   /* USER CODE END 2 */
 
@@ -300,6 +227,86 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+        uint8_t CMD_ID = NO_MSG_IDENTIFIER;
+	    uint16_t test_amp_ma, nm_amp_ma, freq_sel;
+	    while(!is_comm_success())
+	    {
+	  	  CMD_ID = comm_get_control_params();
+	    }
+	    comm_reset_seccess();
+
+	    if (CMD_ID == WAV_GEN_MSG_IDENTIFIER) {
+	  	ERIGO_GLOBAL_STATE = STIM_CONTROL;
+
+	  	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
+	  	test_amp_ma = CMD_DATA.test_amp_ma;
+	  	nm_amp_ma = CMD_DATA.nm_amp_ma;
+	  	freq_sel = CMD_DATA.freq_sel;
+
+	  	//Convert
+	  	milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
+	  	milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+
+	  	switch(freq_sel){
+	  	case FREQ_12_5Hz :
+	  		T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
+	  		break;
+
+	  	case FREQ_25Hz :
+	  		T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
+	  		break;
+
+	  	case FREQ_50Hz :
+	  		T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
+	  		break;
+
+	  	case FREQ_100Hz :
+	  		T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
+	  		break;
+	  	}
+	  	T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+
+
+	  	//Define the circular buffer
+	  	stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
+
+	  	//Set initial value of stim amplitude.
+	  	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
+	  	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+
+	  	HAL_TIM_Base_Start_IT(&htim3);
+	  	HAL_TIM_Base_Start_IT(&htim2);
+	  	HAL_ADC_Start_IT(&hadc1);
+
+	  	//Continues until uC Reset
+
+
+	     }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
+	          ERIGO_GLOBAL_STATE = ADC_OUTPUT;
+
+	          //Define the circular buffer
+	          meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
+
+	          //send ACK of CMD
+	  	    uint8_t tx_buff[5] = {1,2,3, 4, 5};
+	  	    min_send_frame(&min_ctx, DATA_LOG_MSG_IDENTIFIER, tx_buff, 5);
+	  	    //HAL_Delay(10);
+
+	  	    //----Collect ADC Data----//
+	  	    HAL_TIM_Base_Start_IT(&htim2);
+	  	    HAL_ADC_Start_IT(&hadc1);
+
+	  	    while(!circ_buff_is_full(meas_adc_circ_buff));
+
+	  	    HAL_TIM_Base_Stop_IT(&htim2);
+	  	    HAL_ADC_Stop_IT(&hadc1);
+
+	  	    //----Send Data to Host----//
+	  	    comm_send_data(meas_adc_buffer_array, ADC_DATA_AMOUNT);
+
+	  	    //Reset to Idle State
+	  	    ERIGO_GLOBAL_STATE = IDLE_STATE;
+	     }
 
     /* USER CODE END WHILE */
 
