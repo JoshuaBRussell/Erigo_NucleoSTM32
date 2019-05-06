@@ -27,12 +27,14 @@ enum WF_STATE{
 
 };
 
-//Sets up the parameters for stimulation control based values
-//Values are in a typedef struct. The pointer to which should be passed into stim control
+/*Sets up the parameters for stimulation control based values
+ *Values are in a typedef struct. The pointer to which should be passed into stim control
+ */
 void stim_control_setup(WAV_CMD_DATA* cmd_data);
 
-//Sets the initial value for the DAC.
-//Starts the timer which triggers the stimulation control state machine
+/*Sets the initial value for the DAC.
+ *Starts the timer which triggers the stimulation control state machine
+ */
 void stim_control_start();
 
 /*Once it is determined that a diagnostic pulse should be produced (by what ever means the user wishes),
@@ -41,8 +43,6 @@ void stim_control_start();
  *
  *Once the diagnostic pulse is produced, the flag will automatically be cleared
  */
-
-
 void set_diagnostic_pulse_flag();
 
 
