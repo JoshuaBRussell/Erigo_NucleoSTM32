@@ -65,20 +65,6 @@
 #define STIM_TRIGGER_TOLERANCE 50
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
-//#define STIM_FREQ_INTENSITY 1000
-//#define STIM_TEST_INTENSITY 2500
-////These are based on a PSC: 200 and Internal Clock: 84E6
-//#define TPULSE_IN_COUNTS 2090
-//#define TPERIOD_100HZ_IN_COUNTS 4178
-//#define TPERIOD_050HZ_IN_COUNTS 8357
-//#define TPERIOD_025HZ_IN_COUNTS 16715
-//#define TPERIOD_12_5HZ_IN_COUNTS 33432
-//
-//#define STIM_LOW_PRETEST_IN_COUNTS 16715
-//#define STIM_LOW_POSTTEST_IN_COUNTS 16715
-
-//#define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
-
 #define ADC_BUFFER_SIZE 5
 #define ADC_DATA_AMOUNT 1000 //Very temp name
 /* USER CODE END PD */
@@ -97,25 +83,6 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
-
-/* USER CODE BEGIN PV */
-//enum FREQ_OPTIONS{
-//	FREQ_12_5Hz = 0,
-//	FREQ_25Hz,
-//	FREQ_50Hz,
-//	FREQ_100Hz
-//
-//};
-
-//enum WF_STATE{
-//    STIM_FREQ_TRIGGER_LOW = 0,
-//	STIM_FREQ_TRIGGER_HIGH,
-//	STIM_TEST_TRIGGER_LOW_PRETEST,
-//	STIM_TEST_TRIGGER_HIGH,
-//	STIM_TEST_TRIGGER_LOW_POSTTEST
-//
-//};
-//enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
 enum GLOBAL_STATE{
     IDLE_STATE = 0,

@@ -22,7 +22,7 @@
 #define ADC_OUTPUT_END_OF_DATA  0x03
 
 
-typedef struct WAv_CMD_DATA{
+typedef struct WAV_CMD_DATA{
     uint16_t test_amp_ma;
 	uint16_t nm_amp_ma;
 	uint16_t freq_sel;
