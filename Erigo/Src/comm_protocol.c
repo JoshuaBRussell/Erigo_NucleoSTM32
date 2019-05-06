@@ -11,6 +11,7 @@
 #include "string.h"
 #include "stdbool.h"
 #include "min.h"
+#include "cmd_msg_struct.h"
 
 /* Defines -------------------------------------------------------------------*/
 #define BYTES_PER_ADC_SAMPLE 4
@@ -21,7 +22,6 @@ extern UART_HandleTypeDef huart2;
 extern struct min_context min_ctx;
 
 static bool comm_success = false;
-static uint8_t CMD_ID = 0;
 
 WAV_CMD_DATA CMD_DATA;
 
@@ -33,7 +33,7 @@ void comm_reset_seccess(){
 	comm_success = false;
 }
 
-uint8_t comm_get_control_params(){
+WAV_CMD_DATA* comm_get_control_params(WAV_CMD_DATA* cmd_data){
 
     while(!comm_success)
     {
@@ -45,22 +45,26 @@ uint8_t comm_get_control_params(){
     min_poll(&min_ctx, rec_buffer, CMD_MESSAGE_SIZE);
 
     }
-
-    return CMD_ID;
+    return &CMD_DATA;
 
 }
 
 void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
      if(msg_id == WAV_GEN_MSG_IDENTIFIER){
-         CMD_ID = msg_id;
 
+         //Since parse_message gets called from min_user(at least not easily,nor without serious modification),
+         //it can't have the CMD_DATA ptr from
+         //get_control_params passes in. BUT since, the definition of the CMD_DATA container
+         //is in this file, we can reference it here.
+    	 CMD_DATA.cmd_id = msg_id;
     	 CMD_DATA.test_amp_ma = ((uint16_t)min_payload[2] << 8) | ((uint16_t)min_payload[1]);
     	 CMD_DATA.nm_amp_ma =   ((uint16_t)min_payload[4] << 8) | ((uint16_t)min_payload[3]);
     	 CMD_DATA.freq_sel =    ((uint16_t)min_payload[6] << 8) | ((uint16_t)min_payload[5]);
 
+
     	 comm_success = true;
      }else if (msg_id == DATA_LOG_MSG_IDENTIFIER){
-    	 CMD_ID = msg_id;
+    	 CMD_DATA.cmd_id = msg_id;
 
     	 comm_success = true;
      }

@@ -51,6 +51,8 @@
 #include "comm_protocol.h"
 #include "min.h"
 #include "min_user.h"
+#include "cmd_msg_struct.h"
+#include "stim_control.h"
 
 /* USER CODE END Includes */
 
@@ -64,20 +66,6 @@
 #define STIM_TRIGGER_THRESHOLD 2000
 #define STIM_TRIGGER_TOLERANCE 50
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
-
-#define STIM_FREQ_INTENSITY 1000
-#define STIM_TEST_INTENSITY 2500
-//These are based on a PSC: 200 and Internal Clock: 84E6
-#define TPULSE_IN_COUNTS 2090
-#define TPERIOD_100HZ_IN_COUNTS 4178
-#define TPERIOD_050HZ_IN_COUNTS 8357
-#define TPERIOD_025HZ_IN_COUNTS 16715
-#define TPERIOD_12_5HZ_IN_COUNTS 33432
-
-#define STIM_LOW_PRETEST_IN_COUNTS 16715
-#define STIM_LOW_POSTTEST_IN_COUNTS 16715
-
-#define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 
 #define ADC_BUFFER_SIZE 5
 #define ADC_DATA_AMOUNT 1000 //Very temp name
@@ -99,24 +87,6 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-enum FREQ_OPTIONS{
-	FREQ_12_5Hz = 0,
-	FREQ_25Hz,
-	FREQ_50Hz,
-	FREQ_100Hz
-
-};
-
-enum WF_STATE{
-    STIM_FREQ_TRIGGER_LOW = 0,
-	STIM_FREQ_TRIGGER_HIGH,
-	STIM_TEST_TRIGGER_LOW_PRETEST,
-	STIM_TEST_TRIGGER_HIGH,
-	STIM_TEST_TRIGGER_LOW_POSTTEST
-
-};
-enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
-
 enum GLOBAL_STATE{
     IDLE_STATE = 0,
 	STIM_CONTROL,
@@ -143,15 +113,8 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-bool TEST_FLAG = false;
+
 uint32_t Num_of_Threshold_Counts = 0;
-
-uint16_t T_LOW = 0; //Initially based on freq.
-uint16_t T_PERIOD = 0;
-
-uint16_t Test_Amplitude_in_Counts = 0;
-uint16_t NM_Amplitude_in_Counts = 0;
-uint16_t Freq_Sel_in_Counts = 0;
 
 uint32_t gADC_reading = 0;
 
@@ -176,11 +139,8 @@ bool should_test_pulse_be_produced(){
 	return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
 
-//This is only called at the onset of the program a couple of times. Otherwise the
-//cast and float multiplicatin would be considered "not pretty."
-void milliamps_to_DAC_counts(const uint16_t in_milliamp, uint16_t* dac_counts){
-    *dac_counts =  (uint16_t)(MILLIAMP_TO_DAC_CONV_FACTOR * (float)in_milliamp);
-}
+WAV_CMD_DATA* CMD_DATA_Handle;
+
 /* USER CODE END 0 */
 
 /**
@@ -227,61 +187,30 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-        uint8_t CMD_ID = NO_MSG_IDENTIFIER;
-	    uint16_t test_amp_ma, nm_amp_ma, freq_sel;
 	    while(!is_comm_success())
 	    {
-	  	  CMD_ID = comm_get_control_params();
+	    	CMD_DATA_Handle = comm_get_control_params();
 	    }
 	    comm_reset_seccess();
 
-	    if (CMD_ID == WAV_GEN_MSG_IDENTIFIER) {
-	  	ERIGO_GLOBAL_STATE = STIM_CONTROL;
+	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER) {
+			ERIGO_GLOBAL_STATE = STIM_CONTROL;
 
-	  	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
-	  	test_amp_ma = CMD_DATA.test_amp_ma;
-	  	nm_amp_ma = CMD_DATA.nm_amp_ma;
-	  	freq_sel = CMD_DATA.freq_sel;
+			//Define the circular buffer
+			stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
 
-	  	//Convert
-	  	milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-	  	milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+			//Start stimulation
+			stim_control_setup(CMD_DATA_Handle);
+			stim_control_start();
 
-	  	switch(freq_sel){
-	  	case FREQ_12_5Hz :
-	  		T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
-	  		break;
+			//Start collecting ADC position samples
+			HAL_TIM_Base_Start_IT(&htim2);
+			HAL_ADC_Start_IT(&hadc1);
 
-	  	case FREQ_25Hz :
-	  		T_PERIOD = TPERIOD_025HZ_IN_COUNTS;
-	  		break;
-
-	  	case FREQ_50Hz :
-	  		T_PERIOD = TPERIOD_050HZ_IN_COUNTS;
-	  		break;
-
-	  	case FREQ_100Hz :
-	  		T_PERIOD = TPERIOD_100HZ_IN_COUNTS;
-	  		break;
-	  	}
-	  	T_LOW = (T_PERIOD-TPULSE_IN_COUNTS);
+			//Continues until uC Reset
 
 
-	  	//Define the circular buffer
-	  	stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
-
-	  	//Set initial value of stim amplitude.
-	  	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
-	  	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-
-	  	HAL_TIM_Base_Start_IT(&htim3);
-	  	HAL_TIM_Base_Start_IT(&htim2);
-	  	HAL_ADC_Start_IT(&hadc1);
-
-	  	//Continues until uC Reset
-
-
-	    }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
+	    }else if (CMD_DATA_Handle->cmd_id == DATA_LOG_MSG_IDENTIFIER){
 
 	    	ERIGO_GLOBAL_STATE = ADC_OUTPUT;
 
@@ -617,61 +546,10 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-//----ISR Callbacks----//
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-
-
-	if (htim==&htim3) {  //This should only run for TIM3's Period Elapse
-		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
-		HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
-
-		switch(STIM_STATE)
-		{
-		case STIM_FREQ_TRIGGER_LOW:
-			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-			STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
-			break;
-
-		case STIM_FREQ_TRIGGER_HIGH:
-			if(TEST_FLAG){
-				__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
-				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
-				HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-				STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
-			}else{
-				__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
-				STIM_STATE = STIM_FREQ_TRIGGER_LOW;
-			}
-			break;
-
-		case STIM_TEST_TRIGGER_LOW_PRETEST:
-			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-			STIM_STATE = STIM_TEST_TRIGGER_HIGH;
-			break;
-
-		case STIM_TEST_TRIGGER_HIGH:
-			TEST_FLAG = false;
-			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
-			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-			STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
-			break;
-
-		case STIM_TEST_TRIGGER_LOW_POSTTEST:
-			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-			STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
-			break;
-		}
-	}
-
-}
-
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	gADC_reading = HAL_ADC_GetValue(&hadc1);
-	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 	if(ERIGO_GLOBAL_STATE == ADC_OUTPUT){
 		circ_buff_put(meas_adc_circ_buff, gADC_reading);
@@ -682,7 +560,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    {
 		    if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-			    TEST_FLAG = true;
+		    	set_diagnostic_pulse_flag();
 		    }
 		    Num_of_Threshold_Counts++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
