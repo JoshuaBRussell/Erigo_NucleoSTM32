@@ -611,8 +611,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    {
 		    if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-		    	set_test_flag();
-//			    TEST_FLAG = true;
+		    	set_diagnostic_pulse_flag();
 		    }
 		    Num_of_Threshold_Counts++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;

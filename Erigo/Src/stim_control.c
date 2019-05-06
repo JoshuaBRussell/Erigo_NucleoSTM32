@@ -39,7 +39,7 @@ static uint16_t Freq_Sel_in_Counts = 0;
 static uint16_t T_LOW = 0; //Initially based on freq.
 static uint16_t T_PERIOD = 0;
 
-static bool TEST_FLAG = false;
+static bool send_diagnostic_pulse = false;
 
 //This is only called at the onset of the program a couple of times. Otherwise the
 //cast and float multiplication would be considered "not pretty."
@@ -47,16 +47,14 @@ static void milliamps_to_DAC_counts(const uint16_t in_milliamp, uint16_t* dac_co
     *dac_counts =  (uint16_t)(MILLIAMP_TO_DAC_CONV_FACTOR * (float)in_milliamp);
 }
 
-void set_test_flag(){
-	TEST_FLAG = true;
+//Thi
+static void unset_diagnostic_pulse_flag(){
+	send_diagnostic_pulse = false;
 }
 
-void unset_test_flag(){
-	TEST_FLAG = false;
+void set_diagnostic_pulse_flag(){
+	send_diagnostic_pulse = true;
 }
-
-
-
 
 void stim_control_setup(WAV_CMD_DATA* cmd_data){
 	uint16_t test_amp_ma, nm_amp_ma, freq_sel;
@@ -116,7 +114,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			break;
 
 		case STIM_FREQ_TRIGGER_HIGH:
-			if(TEST_FLAG){
+			if(send_diagnostic_pulse){
 				__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
 				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
 				HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
@@ -133,7 +131,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			break;
 
 		case STIM_TEST_TRIGGER_HIGH:
-			TEST_FLAG = false;
+			unset_diagnostic_pulse_flag();
 			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
 			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
 			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
