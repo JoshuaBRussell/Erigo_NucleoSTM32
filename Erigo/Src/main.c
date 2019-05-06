@@ -51,6 +51,8 @@
 #include "comm_protocol.h"
 #include "min.h"
 #include "min_user.h"
+#include "cmd_msg_struct.h"
+#include "stim_control.h"
 
 /* USER CODE END Includes */
 
@@ -137,6 +139,8 @@ bool should_test_pulse_be_produced(){
 	return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
 
+WAV_CMD_DATA* CMD_DATA_Handle;
+
 /* USER CODE END 0 */
 
 /**
@@ -183,22 +187,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-        uint8_t CMD_ID = NO_MSG_IDENTIFIER;
-
 	    while(!is_comm_success())
 	    {
-	  	  CMD_ID = comm_get_control_params();
+	    	CMD_DATA_Handle = comm_get_control_params();
 	    }
 	    comm_reset_seccess();
 
-	    if (CMD_ID == WAV_GEN_MSG_IDENTIFIER) {
+	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER) {
 			ERIGO_GLOBAL_STATE = STIM_CONTROL;
 
 			//Define the circular buffer
 			stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
 
 			//Start stimulation
-			stim_control_setup();
+			stim_control_setup(CMD_DATA_Handle);
 			stim_control_start();
 
 			//Start collecting ADC position samples
@@ -208,7 +210,7 @@ int main(void)
 			//Continues until uC Reset
 
 
-	    }else if (CMD_ID == DATA_LOG_MSG_IDENTIFIER){
+	    }else if (CMD_DATA_Handle->cmd_id == DATA_LOG_MSG_IDENTIFIER){
 
 	    	ERIGO_GLOBAL_STATE = ADC_OUTPUT;
 

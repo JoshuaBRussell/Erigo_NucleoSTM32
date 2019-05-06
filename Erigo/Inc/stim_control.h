@@ -5,7 +5,7 @@
  *
  */
 /* Includes ------------------------------------------------------------------*/
-#include "comm_protocol.h"
+#include "cmd_msg_struct.h"
 
 /* Defines -------------------------------------------------------------------*/
 
@@ -27,7 +27,7 @@ enum WF_STATE{
 
 };
 
-void stim_control_setup();
+void stim_control_setup(WAV_CMD_DATA* cmd_data);
 
 void stim_control_start();
 

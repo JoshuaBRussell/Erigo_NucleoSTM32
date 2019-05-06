@@ -9,6 +9,8 @@
 
 #include "main.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include "cmd_msg_struct.h"
 
 /* Defines -------------------------------------------------------------------*/
 #define STIM_FREQ_INTENSITY 1000
@@ -56,13 +58,13 @@ void unset_test_flag(){
 
 
 
-void stim_control_setup(){
+void stim_control_setup(WAV_CMD_DATA* cmd_data){
 	uint16_t test_amp_ma, nm_amp_ma, freq_sel;
 
 	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
-	test_amp_ma = CMD_DATA.test_amp_ma;
-	nm_amp_ma = CMD_DATA.nm_amp_ma;
-	freq_sel = CMD_DATA.freq_sel;
+	test_amp_ma = cmd_data->test_amp_ma;
+	nm_amp_ma = cmd_data->nm_amp_ma;
+	freq_sel = cmd_data->freq_sel;
 
 	//Convert
 	milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);

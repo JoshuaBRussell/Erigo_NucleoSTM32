@@ -13,6 +13,7 @@
 
 #include "stdbool.h"
 #include "stdint.h"
+#include "cmd_msg_struct.h"
 
 #define SERIAL_MESSAGE_SIZE 255
 #define CMD_MESSAGE_SIZE 15
@@ -22,23 +23,24 @@
 #define ADC_OUTPUT_END_OF_DATA  0x03
 
 
-typedef struct WAV_CMD_DATA{
-    uint16_t test_amp_ma;
-	uint16_t nm_amp_ma;
-	uint16_t freq_sel;
-}WAV_CMD_DATA;
+//typedef struct WAV_CMD_DATA{
+//    uint16_t test_amp_ma;
+//	uint16_t nm_amp_ma;
+//	uint16_t freq_sel;
+//}WAV_CMD_DATA;
 
-extern WAV_CMD_DATA CMD_DATA;
+//extern WAV_CMD_DATA CMD_DATA;
 
 bool is_comm_success();
 
 void comm_reset_seccess();
 
 /* Gets CMD message from whatever comm protocol is desired.
- * Will get cmd message and then transfer data into the appropriate struct.
+ * Will get cmd message and then transfer data into a typedef struct.
  *
+ * A ptr to that typedef struct is returned
  */
-uint8_t comm_get_control_params();
+WAV_CMD_DATA* comm_get_control_params();
 
 /* Parses buffer for data.
  *
