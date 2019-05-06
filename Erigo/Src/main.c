@@ -84,6 +84,7 @@ TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
+/* USER CODE BEGIN PV */
 enum GLOBAL_STATE{
     IDLE_STATE = 0,
 	STIM_CONTROL,
