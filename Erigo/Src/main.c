@@ -205,6 +205,10 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  uint8_t Data[6];
+  HAL_UART_Receive_IT(&huart2, Data, 6);
+  while(1){};
+
   //Init of MIN CTX//
   min_init_context(&min_ctx, 0);
 
@@ -576,6 +580,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    __NOP();
+}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {

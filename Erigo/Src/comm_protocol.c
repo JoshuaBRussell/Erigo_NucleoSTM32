@@ -132,3 +132,9 @@ void comm_send_ACK(uint8_t msg_id){
 	min_send_frame(&min_ctx, msg_id, &null_buff, 0);
 
 }
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    __NOP();
+}
