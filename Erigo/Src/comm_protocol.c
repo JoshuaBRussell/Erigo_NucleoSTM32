@@ -22,6 +22,7 @@ extern UART_HandleTypeDef huart2;
 extern struct min_context min_ctx;
 
 static bool comm_success = false;
+static uint8_t rec_buffer[CMD_MESSAGE_SIZE];
 
 WAV_CMD_DATA CMD_DATA;
 
@@ -35,16 +36,14 @@ void comm_reset_seccess(){
 
 WAV_CMD_DATA* comm_get_control_params(WAV_CMD_DATA* cmd_data){
 
-    while(!comm_success)
-    {
-	uint8_t rec_buffer[CMD_MESSAGE_SIZE];
 	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
 
-	HAL_UART_Receive(&huart2, rec_buffer, CMD_MESSAGE_SIZE, HAL_MAX_DELAY);
+	HAL_UART_Receive_IT(&huart2, rec_buffer, CMD_MESSAGE_SIZE);
 
-    min_poll(&min_ctx, rec_buffer, CMD_MESSAGE_SIZE);
-
+    while(!comm_success)
+    {
     }
+
     return &CMD_DATA;
 
 }
@@ -136,5 +135,5 @@ void comm_send_ACK(uint8_t msg_id){
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    __NOP();
+	min_poll(&min_ctx, rec_buffer, CMD_MESSAGE_SIZE);
 }
