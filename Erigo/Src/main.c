@@ -69,6 +69,13 @@
 
 #define ADC_BUFFER_SIZE 5
 #define ADC_DATA_AMOUNT 1000 //Very temp name
+
+#define TEST_AMP_MA_MIN 0
+#define TEST_AMP_MA_MAX 500
+#define   NM_AMP_MA_MIN 0
+#define   NM_AMP_MA_MAX 300
+#define    FREQ_SEL_MIN 0
+#define    FREQ_SEL_MAX 3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -141,6 +148,26 @@ bool should_test_pulse_be_produced(){
 
 WAV_CMD_DATA* CMD_DATA_Handle;
 
+//Checks to make sure it is within the range (low, high) inclusive
+bool in_range(uint16_t x, uint16_t low, uint16_t high){
+    return ((x>=low)&&(x<=high));
+}
+
+//Before the STIM_CONTROL state is entered, the values in the cmd msg are checked to make sure they
+//are not out of range
+bool check_stim_params(WAV_CMD_DATA* CMD_DATA_Handle){
+
+	bool vals_in_bounds = false;
+	//Check test_amp_ma
+    if(in_range(CMD_DATA_Handle->test_amp_ma, TEST_AMP_MA_MIN, TEST_AMP_MA_MAX) &&
+       in_range(CMD_DATA_Handle->nm_amp_ma, NM_AMP_MA_MIN,NM_AMP_MA_MAX)   &&
+	   in_range(CMD_DATA_Handle->freq_sel, FREQ_SEL_MIN, FREQ_SEL_MAX)){
+        return true;
+    }
+
+    return vals_in_bounds;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -193,10 +220,14 @@ int main(void)
 	    }
 	    comm_reset_seccess();
 
-	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER) {
-			ERIGO_GLOBAL_STATE = STIM_CONTROL;
+	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER && check_stim_params(CMD_DATA_Handle)) {
 
-			//Define the circular buffer
+	    	//This state is not entered until bounds checking is done.
+	    	//(Although not implemented yet) This is so that the stim output will not change,
+	    	//since it makes sure it is in the STIM_CONTROL state first.
+	    	ERIGO_GLOBAL_STATE = STIM_CONTROL;
+
+	    	//Define the circular buffer
 			stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
 
 			//Start stimulation
