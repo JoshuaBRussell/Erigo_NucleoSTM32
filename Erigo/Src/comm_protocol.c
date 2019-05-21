@@ -30,22 +30,31 @@ bool is_comm_success(){
 	return comm_success;
 }
 
-void comm_reset_seccess(){
+void comm_reset_success(){
 	comm_success = false;
 }
 
-WAV_CMD_DATA* comm_get_control_params(WAV_CMD_DATA* cmd_data){
-
+void comm_allow(){
 	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
 
 	HAL_UART_Receive_IT(&huart2, rec_buffer, CMD_MESSAGE_SIZE);
 
-    while(!comm_success)
-    {
-    }
+}
+
+WAV_CMD_DATA* comm_init(){
+
+    comm_allow();
 
     return &CMD_DATA;
+}
 
+void comm_get_control_params_blocking(){
+
+	//comm_allow();
+
+	comm_reset_success(); //Reset success so only a new message will work
+	while(!is_comm_success()){}
+    comm_reset_success();
 }
 
 void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
@@ -62,7 +71,13 @@ void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
 
 
     	 comm_success = true;
+
      }else if (msg_id == DATA_LOG_MSG_IDENTIFIER){
+    	 CMD_DATA.cmd_id = msg_id;
+
+    	 comm_success = true;
+
+     }else if(msg_id == STOP_PROC_ID){
     	 CMD_DATA.cmd_id = msg_id;
 
     	 comm_success = true;
@@ -136,4 +151,6 @@ void comm_send_ACK(uint8_t msg_id){
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	min_poll(&min_ctx, rec_buffer, CMD_MESSAGE_SIZE);
+
+	comm_allow();  //Allows for another msg to be received using ISR
 }

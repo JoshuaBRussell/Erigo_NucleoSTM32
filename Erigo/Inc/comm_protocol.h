@@ -21,6 +21,7 @@
 #define WAV_GEN_MSG_IDENTIFIER  0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02
 #define ADC_OUTPUT_END_OF_DATA  0x03
+#define STOP_PROC_ID            0x04
 
 
 //typedef struct WAV_CMD_DATA{
@@ -33,14 +34,19 @@
 
 bool is_comm_success();
 
-void comm_reset_seccess();
+void comm_reset_success();
 
-/* Gets CMD message from whatever comm protocol is desired.
- * Will get cmd message and then transfer data into a typedef struct.
+//Allows for new msgs to come in.
+void comm_allow();
+
+//A ptr to that typedef struct is returned
+WAV_CMD_DATA* comm_init();
+
+/* Wait for CMD message from whatever comm protocol is desired.
  *
  * A ptr to that typedef struct is returned
  */
-WAV_CMD_DATA* comm_get_control_params();
+void comm_get_control_params_blocking();
 
 /* Parses buffer for data.
  *

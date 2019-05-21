@@ -208,17 +208,16 @@ int main(void)
   //Init of MIN CTX//
   min_init_context(&min_ctx, 0);
 
+  CMD_DATA_Handle = comm_init();  //Init comms and return a msg handler
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	    while(!is_comm_success())
-	    {
-	    	CMD_DATA_Handle = comm_get_control_params();
-	    }
-	    comm_reset_seccess();
+
+	    comm_get_control_params_blocking();
 
 	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER && check_stim_params(CMD_DATA_Handle)) {
 
@@ -238,7 +237,27 @@ int main(void)
 			HAL_TIM_Base_Start_IT(&htim2);
 			HAL_ADC_Start_IT(&hadc1);
 
-			//Continues until uC Reset
+
+			//Loops until Reset Msg is received
+			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID){};
+
+
+			//Stop Stimulator Control( Order is important here. Stim ISR turns off first
+			//so no other stimulation pulses are sent. Then the amplitude. Then the ADC sampling.)
+			HAL_TIM_Base_Stop_IT(&htim3); //Turn of Stim ISR
+
+			HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
+
+			//Set stim amplitude to zero
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 0);
+			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+
+			HAL_TIM_Base_Stop_IT(&htim2); //Turn of ADC sampling
+		    HAL_ADC_Stop_IT(&hadc1);
+
+		    //Reset to Idle State
+		    ERIGO_GLOBAL_STATE = IDLE_STATE;
+
 
 
 	    }else if (CMD_DATA_Handle->cmd_id == DATA_LOG_MSG_IDENTIFIER){
