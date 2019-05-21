@@ -208,17 +208,16 @@ int main(void)
   //Init of MIN CTX//
   min_init_context(&min_ctx, 0);
 
+  CMD_DATA_Handle = comm_init();  //Init comms and return a msg handler
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	    while(!is_comm_success())
-	    {
-	    	CMD_DATA_Handle = comm_get_control_params();
-	    }
-	    comm_reset_seccess();
+
+	    comm_get_control_params_blocking();
 
 	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER && check_stim_params(CMD_DATA_Handle)) {
 
@@ -238,7 +237,15 @@ int main(void)
 			HAL_TIM_Base_Start_IT(&htim2);
 			HAL_ADC_Start_IT(&hadc1);
 
-			//Continues until uC Reset
+
+			//Loops until Reset Msg is received
+			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID){};
+
+			stim_control_reset();
+
+		    //Reset to Idle State
+		    ERIGO_GLOBAL_STATE = IDLE_STATE;
+
 
 
 	    }else if (CMD_DATA_Handle->cmd_id == DATA_LOG_MSG_IDENTIFIER){

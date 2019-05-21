@@ -37,6 +37,11 @@ void stim_control_setup(WAV_CMD_DATA* cmd_data);
  */
 void stim_control_start();
 
+/*
+ * Shuts down stimulation control so it can return to an IDLE state.
+ */
+void stim_control_reset();
+
 /*Once it is determined that a diagnostic pulse should be produced (by what ever means the user wishes),
  *this should be called, and when appropriate the stimulation control state machine will
  *cause a diagnostic pulse.
