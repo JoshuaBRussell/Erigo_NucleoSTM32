@@ -53,6 +53,7 @@
 #include "min_user.h"
 #include "cmd_msg_struct.h"
 #include "stim_control.h"
+#include "global_state.h"
 
 /* USER CODE END Includes */
 
@@ -94,14 +95,6 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-enum GLOBAL_STATE{
-    IDLE_STATE = 0,
-	STIM_CONTROL,
-	ADC_OUTPUT
-};
-enum GLOBAL_STATE ERIGO_GLOBAL_STATE = IDLE_STATE;
-
-
 struct min_context min_ctx;
 
 /* USER CODE END PV */
@@ -224,7 +217,7 @@ int main(void)
 	    	//This state is not entered until bounds checking is done.
 	    	//(Although not implemented yet) This is so that the stim output will not change,
 	    	//since it makes sure it is in the STIM_CONTROL state first.
-	    	ERIGO_GLOBAL_STATE = STIM_CONTROL;
+	    	setGlobalState_STIM_CONTROL();
 
 	    	//Define the circular buffer
 			stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
@@ -242,15 +235,14 @@ int main(void)
 			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID){};
 
 			stim_control_reset();
-
-		    //Reset to Idle State
-		    ERIGO_GLOBAL_STATE = IDLE_STATE;
+		    //Reset to Idle State only once stim control has been reset
+		    setGlobalState_IDLE_STATE();
 
 
 
 	    }else if (CMD_DATA_Handle->cmd_id == DATA_LOG_MSG_IDENTIFIER){
 
-	    	ERIGO_GLOBAL_STATE = ADC_OUTPUT;
+	    	setGlobalState_ADC_OUTPUT();
 
 	        //Define the circular buffer
 	        meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
@@ -270,7 +262,7 @@ int main(void)
 	  	    comm_send_data(meas_adc_buffer_array, ADC_DATA_AMOUNT);
 
 	  	    //Reset to Idle State
-	  	    ERIGO_GLOBAL_STATE = IDLE_STATE;
+	  	    setGlobalState_IDLE_STATE();
 	     }
 
     /* USER CODE END WHILE */
@@ -589,10 +581,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	gADC_reading = HAL_ADC_GetValue(&hadc1);
 	//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	if(ERIGO_GLOBAL_STATE == ADC_OUTPUT){
+	if(getGlobalState() == ADC_OUTPUT){
 		circ_buff_put(meas_adc_circ_buff, gADC_reading);
 	}
-	else if(ERIGO_GLOBAL_STATE == STIM_CONTROL){
+	else if(getGlobalState() == STIM_CONTROL){
 	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
 	    if(should_test_pulse_be_produced())
 	    {
