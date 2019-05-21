@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <assert.h>
+#include <string.h>
 
 struct circ_buff{
     uint32_t* buffer;
@@ -62,6 +63,9 @@ circ_buff_handle circ_buff_init(uint32_t* buffer, uint32_t length){
 void circ_buff_reset(circ_buff_handle circ_buff){
     assert(circ_buff);
     
+    //clear underlying array
+    memset(circ_buff->buffer, 0, circ_buff->max_buffer_size*sizeof(uint32_t));
+
     circ_buff->head = 0;
     circ_buff->tail = 0;
     circ_buff->buffer_sum = 0;
