@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "cmd_msg_struct.h"
+#include "global_state.h"
 
 /* Defines -------------------------------------------------------------------*/
 #define STIM_FREQ_INTENSITY 1000
@@ -125,46 +126,50 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 	if (htim==&htim3) {  //This should only run for TIM3's Period Elapse
-		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		if (getGlobalState() == STIM_CONTROL) {  //This should only run if we are in the correct state(STIM_CONTROL).
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-		HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+			HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 
-		switch(STIM_STATE)
-		{
-		case STIM_FREQ_TRIGGER_LOW:
-			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-			STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
-			break;
+			switch(STIM_STATE)
+			{
+			case STIM_FREQ_TRIGGER_LOW:
+				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+				STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+				break;
 
-		case STIM_FREQ_TRIGGER_HIGH:
-			if(send_diagnostic_pulse){
-				__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
-				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
+			case STIM_FREQ_TRIGGER_HIGH:
+				if(send_diagnostic_pulse){
+					__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
+					HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
+					HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+					STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
+				}else{
+					__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
+					STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+				}
+				break;
+
+			case STIM_TEST_TRIGGER_LOW_PRETEST:
+				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+				STIM_STATE = STIM_TEST_TRIGGER_HIGH;
+				break;
+
+			case STIM_TEST_TRIGGER_HIGH:
+				unset_diagnostic_pulse_flag();
+				__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
+				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
 				HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-				STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
-			}else{
-				__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
-				STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+				STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
+				break;
+
+			case STIM_TEST_TRIGGER_LOW_POSTTEST:
+				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+				STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+				break;
 			}
-			break;
-
-		case STIM_TEST_TRIGGER_LOW_PRETEST:
-			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-			STIM_STATE = STIM_TEST_TRIGGER_HIGH;
-			break;
-
-		case STIM_TEST_TRIGGER_HIGH:
-			unset_diagnostic_pulse_flag();
-			__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
-			HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-			STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
-			break;
-
-		case STIM_TEST_TRIGGER_LOW_POSTTEST:
-			__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
-			STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
-			break;
+		}else{
+			//Send some kind of error message?
 		}
 	}
 
