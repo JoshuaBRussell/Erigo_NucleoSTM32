@@ -27,8 +27,11 @@
 
 #define MILLIAMP_TO_DAC_CONV_FACTOR 12.4
 
+//Needed HW Handlers
 extern DAC_HandleTypeDef hdac;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim2;
+extern ADC_HandleTypeDef hadc1;
 
 static enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
@@ -94,6 +97,26 @@ void stim_control_start(){
   	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
   	HAL_TIM_Base_Start_IT(&htim3);
+}
+
+void stim_control_reset(){
+
+	//( Order is important here. Stim ISR turns off first
+	//so no other stimulation pulses are sent. Then the amplitude. Then the ADC sampling.)
+	HAL_TIM_Base_Stop_IT(&htim3); //Turn of Stim ISR
+	HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+    STIM_STATE = STIM_FREQ_TRIGGER_LOW;
+
+	//Set stim amplitude to zero
+	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 0);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+
+	HAL_TIM_Base_Stop_IT(&htim2); //Turn of ADC sampling
+	HAL_ADC_Stop_IT(&hadc1);
+
+
 }
 
 
