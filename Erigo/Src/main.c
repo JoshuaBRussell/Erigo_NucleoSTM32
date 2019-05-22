@@ -77,6 +77,8 @@
 #define   NM_AMP_MA_MAX 300
 #define    FREQ_SEL_MIN 0
 #define    FREQ_SEL_MAX 3
+
+#define MAX_NM_TIME_MS 60000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -231,8 +233,9 @@ int main(void)
 			HAL_ADC_Start_IT(&hadc1);
 
 
-			//Loops until Reset Msg is received
-			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID){};
+			//Loops until Reset Msg is received or TIMEOUT has expired
+			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
+			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0)){};
 
 			stim_control_reset();
 		    //Reset to Idle State only once stim control has been reset
