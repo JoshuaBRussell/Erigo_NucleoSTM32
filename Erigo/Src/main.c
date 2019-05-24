@@ -98,7 +98,6 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-struct min_context min_ctx;
 
 /* USER CODE END PV */
 
@@ -201,8 +200,6 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  //Init of MIN CTX//
-  min_init_context(&min_ctx, 0);
 
   CMD_DATA_Handle = comm_init();  //Init comms and return a msg handler
 

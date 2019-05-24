@@ -19,7 +19,7 @@
 #define SAMPLES_PER_FRAME (DATA_OUT_PAYLOAD_SIZE/BYTES_PER_ADC_SAMPLE)
 
 extern UART_HandleTypeDef huart2;
-extern struct min_context min_ctx;
+static struct min_context min_ctx;
 
 static bool comm_success = false;
 static uint8_t rec_buffer[CMD_MESSAGE_SIZE];
@@ -42,6 +42,9 @@ void comm_allow(){
 }
 
 WAV_CMD_DATA* comm_init(){
+
+    //Init of MIN CTX//
+    min_init_context(&min_ctx, 0);
 
     comm_allow();
 
