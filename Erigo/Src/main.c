@@ -77,6 +77,9 @@
 #define   NM_AMP_MA_MAX 300
 #define    FREQ_SEL_MIN 0
 #define    FREQ_SEL_MAX 3
+
+#define MAX_NM_TIME_MS 60000
+#define DIAGNOSTIC_PULSE_TIME 500
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -114,7 +117,7 @@ static void MX_TIM2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-uint32_t Num_of_Threshold_Counts = 0;
+uint32_t num_of_threshold_crossings = 0;
 
 uint32_t gADC_reading = 0;
 
@@ -134,7 +137,7 @@ circ_buff_handle meas_adc_circ_buff;
 
 bool POS_BELOW_THRESHOLD = false;
 
-bool should_test_pulse_be_produced(){
+bool has_threshold_been_crossed(){
 	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
 	return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
 }
@@ -231,8 +234,9 @@ int main(void)
 			HAL_ADC_Start_IT(&hadc1);
 
 
-			//Loops until Reset Msg is received
-			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID){};
+			//Loops while Reset Msg isn't received AND TIMEOUT hasn't expired
+			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
+			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0)){};
 
 			stim_control_reset();
 		    //Reset to Idle State only once stim control has been reset
@@ -586,13 +590,17 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	}
 	else if(getGlobalState() == STIM_CONTROL){
 	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
-	    if(should_test_pulse_be_produced())
+	    if(has_threshold_been_crossed())
 	    {
-		    if(((Num_of_Threshold_Counts+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+		    if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-		    	set_diagnostic_pulse_flag();
+		    	//if diagnostic pulse timer has not expired we don't send another pulse for safety
+		    	uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
+		    	if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
+		    		set_diagnostic_pulse_flag();
+		    	}
 		    }
-		    Num_of_Threshold_Counts++;
+		    num_of_threshold_crossings++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
 	    }
 	}
