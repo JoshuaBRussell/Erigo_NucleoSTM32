@@ -26,19 +26,19 @@ static uint8_t rec_buffer[CMD_MESSAGE_SIZE];
 
 WAV_CMD_DATA CMD_DATA;
 
+static void comm_allow(){
+	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
+
+	HAL_UART_Receive_IT(&huart2, rec_buffer, CMD_MESSAGE_SIZE);
+
+}
+
 bool is_comm_success(){
 	return comm_success;
 }
 
 void comm_reset_success(){
 	comm_success = false;
-}
-
-void comm_allow(){
-	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
-
-	HAL_UART_Receive_IT(&huart2, rec_buffer, CMD_MESSAGE_SIZE);
-
 }
 
 WAV_CMD_DATA* comm_init(){
@@ -52,8 +52,6 @@ WAV_CMD_DATA* comm_init(){
 }
 
 void comm_get_control_params_blocking(){
-
-	//comm_allow();
 
 	comm_reset_success(); //Reset success so only a new message will work
 	while(!is_comm_success()){}

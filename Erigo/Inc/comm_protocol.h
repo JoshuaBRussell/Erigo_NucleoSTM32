@@ -36,9 +36,6 @@ bool is_comm_success();
 
 void comm_reset_success();
 
-//Allows for new msgs to come in.
-void comm_allow();
-
 //A ptr to that typedef struct is returned
 WAV_CMD_DATA* comm_init();
 
