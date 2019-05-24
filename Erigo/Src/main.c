@@ -235,6 +235,7 @@ int main(void)
 			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
 			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0)){};
 
+			num_of_threshold_crossings = 0; //Reset this to zero once stimulation has ended
 			stim_control_reset();
 		    //Reset to Idle State only once stim control has been reset
 		    setGlobalState_IDLE_STATE();
