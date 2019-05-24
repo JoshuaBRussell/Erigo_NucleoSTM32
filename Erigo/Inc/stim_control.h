@@ -50,5 +50,11 @@ void stim_control_reset();
  */
 void set_diagnostic_pulse_flag();
 
+/*
+ * Returns HAL_GetTick() time of when the last diagnostic pulse was sent.
+ */
+
+uint32_t get_time_of_last_diagnostic_pulse();
+
 
 #endif

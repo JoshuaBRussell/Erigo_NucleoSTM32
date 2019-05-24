@@ -44,6 +44,7 @@ static uint16_t T_LOW = 0; //Initially based on freq.
 static uint16_t T_PERIOD = 0;
 
 static bool send_diagnostic_pulse = false;
+static uint32_t time_of_diagnostic_pulse = 0;
 
 //This is only called at the onset of the program a couple of times. Otherwise the
 //cast and float multiplication would be considered "not pretty."
@@ -58,6 +59,10 @@ static void unset_diagnostic_pulse_flag(){
 
 void set_diagnostic_pulse_flag(){
 	send_diagnostic_pulse = true;
+}
+
+uint32_t get_time_of_last_diagnostic_pulse(){
+    return time_of_diagnostic_pulse;
 }
 
 void stim_control_setup(WAV_CMD_DATA* cmd_data){
@@ -152,6 +157,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 			case STIM_TEST_TRIGGER_LOW_PRETEST:
 				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
+				time_of_diagnostic_pulse = HAL_GetTick();
 				STIM_STATE = STIM_TEST_TRIGGER_HIGH;
 				break;
 

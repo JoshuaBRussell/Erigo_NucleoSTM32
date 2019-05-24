@@ -79,6 +79,7 @@
 #define    FREQ_SEL_MAX 3
 
 #define MAX_NM_TIME_MS 60000
+#define DIAGNOSTIC_PULSE_TIME 500
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -593,7 +594,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    {
 		    if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-		    	set_diagnostic_pulse_flag();
+		    	//if diagnostic pulse timer has not expired we don't send another pulse for safety
+		    	uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
+		    	if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
+		    		set_diagnostic_pulse_flag();
+		    	}
 		    }
 		    num_of_threshold_crossings++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
