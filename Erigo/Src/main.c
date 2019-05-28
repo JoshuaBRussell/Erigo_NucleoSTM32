@@ -215,7 +215,7 @@ int main(void)
 	    if (CMD_DATA_Handle->cmd_id == WAV_GEN_MSG_IDENTIFIER && check_stim_params(CMD_DATA_Handle)) {
 
 	    	//This state is not entered until bounds checking is done.
-	    	//(Although not implemented yet) This is so that the stim output will not change,
+	    	//This is so that the stim output will not change,
 	    	//since it makes sure it is in the STIM_CONTROL state first.
 	    	setGlobalState_STIM_CONTROL();
 
@@ -230,14 +230,14 @@ int main(void)
 			HAL_TIM_Base_Start_IT(&htim2);
 			HAL_ADC_Start_IT(&hadc1);
 
-
 			//Loops while Reset Msg isn't received AND TIMEOUT hasn't expired
 			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
 			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0)){};
 
 			num_of_threshold_crossings = 0; //Reset this to zero once stimulation has ended
 			stim_control_reset();
-		    //Reset to Idle State only once stim control has been reset
+
+			//Reset to Idle State only once stim control has been reset
 		    setGlobalState_IDLE_STATE();
 
 
@@ -588,6 +588,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	}
 	else if(getGlobalState() == STIM_CONTROL){
 	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
+
+	    //These series of if's should be inside a "should_diagnostic_pulse_be_produced()" function.
 	    if(has_threshold_been_crossed())
 	    {
 		    if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
