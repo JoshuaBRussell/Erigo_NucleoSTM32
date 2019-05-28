@@ -19,12 +19,19 @@
 #define SAMPLES_PER_FRAME (DATA_OUT_PAYLOAD_SIZE/BYTES_PER_ADC_SAMPLE)
 
 extern UART_HandleTypeDef huart2;
-extern struct min_context min_ctx;
+static struct min_context min_ctx;
 
 static bool comm_success = false;
 static uint8_t rec_buffer[CMD_MESSAGE_SIZE];
 
 WAV_CMD_DATA CMD_DATA;
+
+static void comm_allow(){
+	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
+
+	HAL_UART_Receive_IT(&huart2, rec_buffer, CMD_MESSAGE_SIZE);
+
+}
 
 bool is_comm_success(){
 	return comm_success;
@@ -34,14 +41,10 @@ void comm_reset_success(){
 	comm_success = false;
 }
 
-void comm_allow(){
-	memset(&rec_buffer[0], 0, sizeof(rec_buffer));
-
-	HAL_UART_Receive_IT(&huart2, rec_buffer, CMD_MESSAGE_SIZE);
-
-}
-
 WAV_CMD_DATA* comm_init(){
+
+    //Init of MIN CTX//
+    min_init_context(&min_ctx, 0);
 
     comm_allow();
 
@@ -49,8 +52,6 @@ WAV_CMD_DATA* comm_init(){
 }
 
 void comm_get_control_params_blocking(){
-
-	//comm_allow();
 
 	comm_reset_success(); //Reset success so only a new message will work
 	while(!is_comm_success()){}
