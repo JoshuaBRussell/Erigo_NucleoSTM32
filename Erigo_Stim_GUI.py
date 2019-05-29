@@ -5,8 +5,16 @@ matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 
+import numpy as np
+
 #Const Font variables 
 LARGE_FONT = ("Verdana", 12)
+
+#Plot Constants
+PLOT_LWR_LIMIT_X =   0
+PLOT_UPR_LIMIT_X = 1000
+PLOT_LWR_LIMIT_Y =   0
+PLOT_UPR_LIMIT_Y = 4096
 
 class ErigoGUI(tk.Tk):
 
@@ -50,7 +58,15 @@ def Send_Stop_Stim_Command():
     print("Stop Stim Cmd Sent...")
 
 def Send_Get_Pos_Data_Command():
+    print("Sending Cmd...")
+
+    #data collected from uC
+    theta = np.arange(0.0, 1000.0, 1.0)
+    y = 750.0*np.sin((0.1/np.pi)*theta)+3000.0
+    data = np.vstack((theta, y))
     print("Gathered the data...")
+    print("Data shape: ", data.shape)
+    return data
 
 class StartPage(tk.Frame):
 
@@ -87,16 +103,38 @@ class StartPage(tk.Frame):
         Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: Send_Stop_Stim_Command())
         Stop_Stim_Button.grid(row = 4, column = 1)
 
-        Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: Send_Get_Pos_Data_Command())
+        Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_Plot(canvas, angle_plot))
         Record_Data_Button.grid(row= 4, column=3)
 
+        #Creates a matplotlib Figure and a subplot on it
         Fig = Figure(figsize=(4,4), dpi=100)
-        a = Fig.add_subplot(111)
-        a.plot([1,2,3,4,5,6,7,9],[1,2,3,4,6,3,4,9])
+        angle_plot = Fig.add_subplot(111)
+        angle_plot.plot()
+        angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
+        angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
 
+        #Canvas is a drawing area for tkinter. We put the matplotlib figure onto the canvas
         canvas = FigureCanvasTkAgg(Fig, self)
         canvas.show()
         canvas.get_tk_widget().grid(row=0, column=3)
+
+    def Update_Plot(self, canvas, plot_obj):
+
+        data = Send_Get_Pos_Data_Command()
+        
+        #if data is valid...
+        x_data = data[0, :]
+        y_data = data[1, :]
+        
+        plot_obj.clear()
+        plot_obj.scatter(x_data, y_data, color="blue")
+        plot_obj.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
+        plot_obj.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
+        #plot_obj.set_xlim([0.0, 1000.0])
+        #plot_obj.set_ylim([min(y_data), max(y_data)])
+
+        canvas.draw()
+
 
 
 
