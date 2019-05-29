@@ -48,11 +48,12 @@ class ErigoGUI(tk.Tk):
 
 
 #Place holders. This will be defined in STM32_Serial
-def Send_Stim_Command(nm_amp, diag_amp, freq):
+def Send_Stim_Command(nm_amp, diag_amp, freq, adc_threshold):
     print("Stim Cmd Sent...")
     print("NM AMP: ", nm_amp)
     print("DIAG AMP: ", diag_amp)
     print("FREQ: ", freq)
+    print("ADC THRESHOLD: ", adc_threshold)
 
 def Send_Stop_Stim_Command():
     print("Stop Stim Cmd Sent...")
@@ -68,13 +69,37 @@ def Send_Get_Pos_Data_Command():
     print("Data shape: ", data.shape)
     return data
 
+class Label_Entry_Frame(tk.Frame):
+    """Creates a tk Frame that creates label entry pairs.
+       The labels(str) are used to access the the actual label and entry as the key to a python dict.
+       (Although if the value entered into the entry is all that is required, there is a get_entry method for that.)
+       If the defualt_entries value is going to be used, all entries must be supplied a default value."""
+    def __init__(self, parent, label_list, default_entries = []):
+        tk.Frame.__init__(self, parent)
+        
+        self.label_entry_pairs = {}
+
+        for i, label_str in enumerate(label_list):
+            self.label_entry_pairs[label_str] = [tk.Label(self, text=label_str), tk.Entry(self, )]
+
+            #place the label on the left of the entry
+            self.label_entry_pairs[label_str][0].grid(row = i, column = 0)
+            self.label_entry_pairs[label_str][1].grid(row = i, column = 1)
+            
+            #Set default entries
+            if(default_entries):
+                self.label_entry_pairs[label_str][1].insert(0, default_entries[i])
+    
+    def get_entry(self, key_str):
+        return self.label_entry_pairs[key_str][1].get()
+
+
+
 class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.title = tk.Label(self, text = "ERIGO Stimulation Control", font = LARGE_FONT)
-        self.title.grid(row=0,column=0, sticky = 'N', columnspan = 2) #Stick forces text to be "North". columnspan causes the text to bridge 
-                                                                 #the columns used for the label/entry pairs
 
         self.ADC_Stats_Max = tk.StringVar()
         self.ADC_Stats_Max.set("Max ADC Pos: --")
@@ -83,48 +108,20 @@ class StartPage(tk.Frame):
         self.ADC_Stats_Rec = tk.StringVar()
         self.ADC_Stats_Rec.set("Rec ADC Threshold: --")
 
-        #Create Label/Entry Objects
-        self.NM_AMP_Entry_Label = tk.Label(self, text = "NM AMP Selection:")
-        self.NM_AMP_Entry = tk.Entry(self)
-        self.Diag_AMP_Entry_Label = tk.Label(self, text = "Diag AMP Selection:")
-        self.Diag_AMP_Entry = tk.Entry(self)
-        self.Freq_Entry_Label = tk.Label(self, text = "Freq Selection:")
-        self.Freq_Entry = tk.Entry(self)
-        self.ADC_Threshold_Entry_Label = tk.Label(self, text = "ADC Threshold:")
-        self.ADC_Threshold_Entry = tk.Entry(self)
+        #Create Label/Entry Frame
+        self.stim_control_labels = ["NM AMP Selection:", "Diag AMP Selection:", "Freq Selection:", "ADC Threshold:"]
+        self.label_entry = Label_Entry_Frame(self, self.stim_control_labels, ["0"]*len(self.stim_control_labels))
 
-        #Place them in a grid pattern
-        self.NM_AMP_Entry_Label.grid(row=1, column = 0)
-        self.NM_AMP_Entry.grid(row=1, column=1)
-        self.Diag_AMP_Entry_Label.grid(row=2, column = 0)
-        self.Diag_AMP_Entry.grid(row=2, column=1)
-        self.Freq_Entry_Label.grid(row=3, column = 0)
-        self.Freq_Entry.grid(row=3, column=1)
-        self.ADC_Threshold_Entry_Label.grid(row=4, column = 0)
-        self.ADC_Threshold_Entry.grid(row=4, column=1)
-
-        #Insert default values
-        self.NM_AMP_Entry.insert(0, '0')
-        self.Diag_AMP_Entry.insert(0, '0')
-        self.Freq_Entry.insert(0, '0')
-        self.ADC_Threshold_Entry.insert(0, '0')
-
-        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: Send_Stim_Command(self.NM_AMP_Entry.get(), self.Diag_AMP_Entry.get(), self.Freq_Entry.get()))
-        self.Stim_Button.grid(row=5, column=0)
-
+        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: Send_Stim_Command(self.label_entry.get_entry("NM AMP Selection:"), 
+                                                                                                    self.label_entry.get_entry("Diag AMP Selection:"), 
+                                                                                                    self.label_entry.get_entry("Freq Selection:"),
+                                                                                                    self.label_entry.get_entry("ADC Threshold:")))
         self.Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: Send_Stop_Stim_Command())
-        self.Stop_Stim_Button.grid(row = 5, column = 1)
-
         self.Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_ADC_Pos())
-        self.Record_Data_Button.grid(row= 5, column=4)
 
         self.Max_ADC_Label = tk.Label(self, textvariable = self.ADC_Stats_Max)
         self.Rec_ADC_Label = tk.Label(self, textvariable = self.ADC_Stats_Rec)
         self.Min_ADC_Label = tk.Label(self, textvariable = self.ADC_Stats_Min)
-
-        self.Max_ADC_Label.grid(row = 3, column=3)
-        self.Rec_ADC_Label.grid(row = 3, column=4)
-        self.Min_ADC_Label.grid(row = 3, column=5)
 
         #Creates a matplotlib Figure and a subplot on it
         self.Fig = Figure(figsize=(4,4), dpi=100)
@@ -136,6 +133,24 @@ class StartPage(tk.Frame):
         #Canvas is a drawing area for tkinter. We put the matplotlib figure onto the canvas
         self.canvas = FigureCanvasTkAgg(self.Fig, self)
         self.canvas.show()
+
+        #Put all grid/location setting calls in one spot since so it is easier to see all locations at once. 
+        self.title.grid(row=0,column=0, sticky = 'N', columnspan = 2) #Stick forces text to be "North". columnspan causes the text to bridge 
+                                                                 #the columns used for the label/entry pairs
+
+        self.Place_Widgets()
+
+    def Place_Widgets(self):
+        self.label_entry.grid(row=1, column = 0)
+        
+        self.Stim_Button.grid(row=5, column=0)
+        self.Stop_Stim_Button.grid(row = 5, column = 1)
+        self.Record_Data_Button.grid(row= 5, column=4)
+
+        self.Max_ADC_Label.grid(row = 3, column=3)
+        self.Rec_ADC_Label.grid(row = 3, column=4)
+        self.Min_ADC_Label.grid(row = 3, column=5)
+
         self.canvas.get_tk_widget().grid(row=0, column=3, columnspan = 3)
 
     def Update_ADC_Pos(self):
