@@ -84,39 +84,39 @@ class StartPage(tk.Frame):
         self.ADC_Stats_Rec.set("Rec ADC Threshold: --")
 
         #Create Label/Entry Objects
-        NM_AMP_Entry_Label = tk.Label(self, text = "NM AMP Selection:")
-        NM_AMP_Entry = tk.Entry(self)
-        Diag_AMP_Entry_Label = tk.Label(self, text = "Diag AMP Selection:")
-        Diag_AMP_Entry = tk.Entry(self)
-        Freq_Entry_Label = tk.Label(self, text = "Freq Selection:")
-        Freq_Entry = tk.Entry(self)
-        ADC_Threshold_Entry_Label = tk.Label(self, text = "ADC Threshold:")
-        ADC_Threshold_Entry = tk.Entry(self)
+        self.NM_AMP_Entry_Label = tk.Label(self, text = "NM AMP Selection:")
+        self.NM_AMP_Entry = tk.Entry(self)
+        self.Diag_AMP_Entry_Label = tk.Label(self, text = "Diag AMP Selection:")
+        self.Diag_AMP_Entry = tk.Entry(self)
+        self.Freq_Entry_Label = tk.Label(self, text = "Freq Selection:")
+        self.Freq_Entry = tk.Entry(self)
+        self.ADC_Threshold_Entry_Label = tk.Label(self, text = "ADC Threshold:")
+        self.ADC_Threshold_Entry = tk.Entry(self)
 
         #Place them in a grid pattern
-        NM_AMP_Entry_Label.grid(row=1, column = 0)
-        NM_AMP_Entry.grid(row=1, column=1)
-        Diag_AMP_Entry_Label.grid(row=2, column = 0)
-        Diag_AMP_Entry.grid(row=2, column=1)
-        Freq_Entry_Label.grid(row=3, column = 0)
-        Freq_Entry.grid(row=3, column=1)
-        ADC_Threshold_Entry_Label.grid(row=4, column = 0)
-        ADC_Threshold_Entry.grid(row=4, column=1)
+        self.NM_AMP_Entry_Label.grid(row=1, column = 0)
+        self.NM_AMP_Entry.grid(row=1, column=1)
+        self.Diag_AMP_Entry_Label.grid(row=2, column = 0)
+        self.Diag_AMP_Entry.grid(row=2, column=1)
+        self.Freq_Entry_Label.grid(row=3, column = 0)
+        self.Freq_Entry.grid(row=3, column=1)
+        self.ADC_Threshold_Entry_Label.grid(row=4, column = 0)
+        self.ADC_Threshold_Entry.grid(row=4, column=1)
 
         #Insert default values
-        NM_AMP_Entry.insert(0, '0')
-        Diag_AMP_Entry.insert(0, '0')
-        Freq_Entry.insert(0, '0')
-        ADC_Threshold_Entry.insert(0, '0')
+        self.NM_AMP_Entry.insert(0, '0')
+        self.Diag_AMP_Entry.insert(0, '0')
+        self.Freq_Entry.insert(0, '0')
+        self.ADC_Threshold_Entry.insert(0, '0')
 
-        Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: Send_Stim_Command(NM_AMP_Entry.get(), Diag_AMP_Entry.get(), Freq_Entry.get()))
-        Stim_Button.grid(row=5, column=0)
+        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: Send_Stim_Command(self.NM_AMP_Entry.get(), self.Diag_AMP_Entry.get(), self.Freq_Entry.get()))
+        self.Stim_Button.grid(row=5, column=0)
 
-        Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: Send_Stop_Stim_Command())
-        Stop_Stim_Button.grid(row = 5, column = 1)
+        self.Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: Send_Stop_Stim_Command())
+        self.Stop_Stim_Button.grid(row = 5, column = 1)
 
-        Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_ADC_Pos(canvas, angle_plot))
-        Record_Data_Button.grid(row= 5, column=4)
+        self.Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_ADC_Pos())
+        self.Record_Data_Button.grid(row= 5, column=4)
 
         self.Max_ADC_Label = tk.Label(self, textvariable = self.ADC_Stats_Max)
         self.Rec_ADC_Label = tk.Label(self, textvariable = self.ADC_Stats_Rec)
@@ -127,18 +127,18 @@ class StartPage(tk.Frame):
         self.Min_ADC_Label.grid(row = 3, column=5)
 
         #Creates a matplotlib Figure and a subplot on it
-        Fig = Figure(figsize=(4,4), dpi=100)
-        angle_plot = Fig.add_subplot(111)
-        angle_plot.plot()
-        angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
-        angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
+        self.Fig = Figure(figsize=(4,4), dpi=100)
+        self.angle_plot = self.Fig.add_subplot(111)
+        self.angle_plot.plot()
+        self.angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
+        self.angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
 
         #Canvas is a drawing area for tkinter. We put the matplotlib figure onto the canvas
-        canvas = FigureCanvasTkAgg(Fig, self)
-        canvas.show()
-        canvas.get_tk_widget().grid(row=0, column=3, columnspan = 3)
+        self.canvas = FigureCanvasTkAgg(self.Fig, self)
+        self.canvas.show()
+        self.canvas.get_tk_widget().grid(row=0, column=3, columnspan = 3)
 
-    def Update_ADC_Pos(self, canvas, plot_obj):
+    def Update_ADC_Pos(self):
 
         data = Send_Get_Pos_Data_Command()
         
@@ -146,14 +146,14 @@ class StartPage(tk.Frame):
         x_data = data[0, :]
         y_data = data[1, :]
         
-        plot_obj.clear()
+        self.angle_plot.clear()
 
         #Scatter Plot for Raw Data
-        plot_obj.scatter(x_data, y_data, color="blue")
-        plot_obj.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
-        plot_obj.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
-        #plot_obj.set_xlim([0.0, 1000.0])
-        #plot_obj.set_ylim([min(y_data), max(y_data)])
+        self.angle_plot.scatter(x_data, y_data, color="blue")
+        self.angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
+        self.angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
+        #self.angle_plot.set_xlim([0.0, 1000.0])
+        #self.angle_plot.set_ylim([min(y_data), max(y_data)])
 
         #Processing on Data (if any more data processing were to be done, I would consider making it a seperate module)
         max_90_percentile = np.percentile(y_data, 90.0)
@@ -170,11 +170,11 @@ class StartPage(tk.Frame):
         self.ADC_Stats_Min.set("Min ADC Pos: " + str(int(min_10_percentile)))
         self.ADC_Stats_Rec.set("Rec ADC Threshold: " + str(int(AVG)))
 
-        plot_obj.hlines(max_90_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
-        plot_obj.hlines(min_10_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
-        plot_obj.hlines(AVG, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X, colors = "red")
+        self.angle_plot.hlines(max_90_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
+        self.angle_plot.hlines(min_10_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
+        self.angle_plot.hlines(AVG, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X, colors = "red")
 
-        canvas.draw()
+        self.canvas.draw()
 
 
 
