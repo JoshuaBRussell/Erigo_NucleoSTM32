@@ -1,5 +1,10 @@
 import tkinter as tk
 
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.figure import Figure
+
 #Const Font variables 
 LARGE_FONT = ("Verdana", 12)
 
@@ -44,12 +49,16 @@ def Send_Stim_Command(nm_amp, diag_amp, freq):
 def Send_Stop_Stim_Command():
     print("Stop Stim Cmd Sent...")
 
+def Send_Get_Pos_Data_Command():
+    print("Gathered the data...")
+
 class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        label = tk.Label(self, text = "Start Page", font = LARGE_FONT)
-        label.grid(row=0,column=0)
+        label = tk.Label(self, text = "ERIGO Stimulation Control", font = LARGE_FONT)
+        label.grid(row=0,column=0, sticky = 'N', columnspan = 2) #Stick forces text to be "North". columnspan causes the text to bridge 
+                                                                 #the columns used for the label/entry pairs
 
         #Create Label/Entry Objects
         NM_AMP_Entry_Label = tk.Label(self, text = "NM AMP Selection:")
@@ -78,7 +87,18 @@ class StartPage(tk.Frame):
         Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: Send_Stop_Stim_Command())
         Stop_Stim_Button.grid(row = 4, column = 1)
 
-        
+        Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: Send_Get_Pos_Data_Command())
+        Record_Data_Button.grid(row= 4, column=3)
+
+        Fig = Figure(figsize=(4,4), dpi=100)
+        a = Fig.add_subplot(111)
+        a.plot([1,2,3,4,5,6,7,9],[1,2,3,4,6,3,4,9])
+
+        canvas = FigureCanvasTkAgg(Fig, self)
+        canvas.show()
+        canvas.get_tk_widget().grid(row=0, column=3)
+
+
 
         
 
