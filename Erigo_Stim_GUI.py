@@ -6,6 +6,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 
 import numpy as np
+import sys
 
 #Const Font variables 
 LARGE_FONT = ("Verdana", 12)
@@ -48,26 +49,6 @@ class ErigoGUI(tk.Tk):
 
 
 #Place holders. This will be defined in STM32_Serial
-def Send_Stim_Command(nm_amp, diag_amp, freq, adc_threshold):
-    print("Stim Cmd Sent...")
-    print("NM AMP: ", nm_amp)
-    print("DIAG AMP: ", diag_amp)
-    print("FREQ: ", freq)
-    print("ADC THRESHOLD: ", adc_threshold)
-
-def Send_Stop_Stim_Command():
-    print("Stop Stim Cmd Sent...")
-
-def Send_Get_Pos_Data_Command():
-    print("Sending Cmd...")
-
-    #data collected from uC
-    theta = np.arange(0.0, 1000.0, 1.0)
-    y = 750.0*np.sin((0.1/np.pi)*theta)+3000.0 + np.random.normal(0.0, 25.0, theta.size)
-    data = np.vstack((theta, y))
-    print("Gathered the data...")
-    print("Data shape: ", data.shape)
-    return data
 
 class Label_Entry_Frame(tk.Frame):
     """Creates a tk Frame that creates label entry pairs.
@@ -101,6 +82,12 @@ class StartPage(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.title = tk.Label(self, text = "ERIGO Stimulation Control", font = LARGE_FONT)
 
+        self.text_box = tk.Text(self)
+        self.text_box.config(borderwidth=2)
+        self.Write_to_TextBox("Erigo Stimulation GUI...")
+        self.text_box.config(borderwidth = 2, relief="solid")
+        self.text_box.config(height=8) #In lines
+
         self.ADC_Stats_Max = tk.StringVar()
         self.ADC_Stats_Max.set("Max ADC Pos: --")
         self.ADC_Stats_Min = tk.StringVar()
@@ -112,11 +99,11 @@ class StartPage(tk.Frame):
         self.stim_control_labels = ["NM AMP Selection:", "Diag AMP Selection:", "Freq Selection:", "ADC Threshold:"]
         self.label_entry = Label_Entry_Frame(self, self.stim_control_labels, ["0"]*len(self.stim_control_labels))
 
-        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: Send_Stim_Command(self.label_entry.get_entry("NM AMP Selection:"), 
+        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: self.Send_Stim_Command(self.label_entry.get_entry("NM AMP Selection:"), 
                                                                                                     self.label_entry.get_entry("Diag AMP Selection:"), 
                                                                                                     self.label_entry.get_entry("Freq Selection:"),
                                                                                                     self.label_entry.get_entry("ADC Threshold:")))
-        self.Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: Send_Stop_Stim_Command())
+        self.Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: self.Send_Stop_Stim_Command())
         self.Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_ADC_Pos())
 
         self.Max_ADC_Label = tk.Label(self, textvariable = self.ADC_Stats_Max)
@@ -141,6 +128,10 @@ class StartPage(tk.Frame):
         self.Place_Widgets()
 
     def Place_Widgets(self):
+        self.title.grid(row=0, column=0)
+        self.text_box.grid(row=0, column = 0) #The text box can fit in the same cell as the title (I think), b/c
+                                              #the cell is big enough to hold both of them without overlap
+
         self.label_entry.grid(row=1, column = 0)
         
         self.Stim_Button.grid(row=5, column=0)
@@ -153,9 +144,18 @@ class StartPage(tk.Frame):
 
         self.canvas.get_tk_widget().grid(row=0, column=3, columnspan = 3)
 
+    def Write_to_TextBox(self, text):
+
+        self.text_box.config(state=tk.NORMAL)
+        self.text_box.insert("end", text + "\n")
+        self.text_box.config(state=tk.DISABLED)
+
+        self.text_box.yview(tk.END)
+        
+
     def Update_ADC_Pos(self):
 
-        data = Send_Get_Pos_Data_Command()
+        data = self.Send_Get_Pos_Data_Command()
         
         #if data is valid...
         x_data = data[0, :]
@@ -176,11 +176,6 @@ class StartPage(tk.Frame):
         mid_50_percentile = np.percentile(y_data, 50.0)
         AVG = (max_90_percentile+min_10_percentile)/2
 
-        print("MAX: ", max_90_percentile)
-        print("AVG: ", AVG)
-        print("MIN: ", min_10_percentile)
-        print("MID: ", mid_50_percentile)
-
         self.ADC_Stats_Max.set("Max ADC Pos: " + str(int(max_90_percentile)))
         self.ADC_Stats_Min.set("Min ADC Pos: " + str(int(min_10_percentile)))
         self.ADC_Stats_Rec.set("Rec ADC Threshold: " + str(int(AVG)))
@@ -190,6 +185,28 @@ class StartPage(tk.Frame):
         self.angle_plot.hlines(AVG, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X, colors = "red")
 
         self.canvas.draw()
+
+    def Send_Stim_Command(self, nm_amp, diag_amp, freq, adc_threshold):
+        self.Write_to_TextBox("Stim Cmd Sent...")
+        self.Write_to_TextBox("NM AMP: " + str(nm_amp))
+        self.Write_to_TextBox("DIAG AMP: " + str(diag_amp))
+        self.Write_to_TextBox("FREQ: " + str(freq))
+        self.Write_to_TextBox("ADC THRESHOLD: " + str(adc_threshold))
+
+    def Send_Stop_Stim_Command(self):
+        self.Write_to_TextBox("Stop Stim Cmd Sent...")
+
+    def Send_Get_Pos_Data_Command(self):
+        self.Write_to_TextBox("Sending Cmd...")
+
+        #data collected from uC
+        theta = np.arange(0.0, 1000.0, 1.0)
+        y = 750.0*np.sin((0.1/np.pi)*theta)+3000.0 + np.random.normal(0.0, 25.0, theta.size)
+        data = np.vstack((theta, y))
+        self.Write_to_TextBox("Gathered the data...")
+
+        return data
+
 
 
 
