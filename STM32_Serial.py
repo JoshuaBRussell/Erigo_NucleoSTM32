@@ -48,8 +48,9 @@ def wait_for_frames(min_handler: MINTransportSerial):
             return frames
 
 def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
-    """Sends a MIN frame with the CMD as the MIN identifier byte. Then waits for an ACK from the uC with the same CMD."""
-    #junk data at the moment
+    """Sends a MIN frame with the CMD as the MIN identifier byte. Then waits for an ACK from the uC with the same CMD.
+       Returns False if no ACK was received within timeout or if the wrong cmd_id was returned as an ACK"""
+    
     data = b''
     data+=cmd_msg_params.diag_amp_ma.to_bytes(2, byteorder="big")
     data+=cmd_msg_params.nm_amp_ma.to_bytes(2, byteorder="big")
@@ -63,7 +64,7 @@ def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
     print("Waiting for ACK...")
     frames = wait_for_ACK(min_handler, timeout = 1.0)
 
-    #There should only be one frame, but just in case/"wait for ACK" returns a lit of frames
+    #There should only be one frame, but just in case/"wait for ACK" returns a list of frames
     for frame in frames:
         if frame.min_id == cmd_id:
             print("ACK Received...")
@@ -71,7 +72,20 @@ def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
         else:   
             print("ACK Failure...Wrong ACK CMD type returned...")
             return False
+    #Incdicates no ACK ever happened
+    return False
 
+
+def send_CMD_with_Retries(min_handler, cmd_id, cmd_msg_params, num_of_retry_attempts=5):
+    """Keeps sending CMD messages until an ACK is received or until num_of_retry_attempts messages have been
+       sent with no repsonse. Returns True if an ACK was received, returns false otherwise."""
+    comm_ack = False
+    msg_send_attemps = 0
+    while(msg_send_attemps<num_of_retry_attempts and not(comm_ack)):
+        msg_send_attemps+=1
+        comm_ack = send_CMD(min_handler, cmd_id, cmd_msg_params)
+    
+    return comm_ack
 
 def get_Data(min_handler: MINTransportSerial):
     data_xfer_complete = False
@@ -101,7 +115,7 @@ def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
     return data
 
 def send_ADC_CMD(adc_msg_params):
-    send_CMD(min_handler, DATA_LOG_MSG_ID, adc_msg_params)
+    send_CMD_with_Retries(min_handler, DATA_LOG_MSG_ID, adc_msg_params)
 
     #Collect data after ACK from uC
     raw_bin_data = get_Data(min_handler)
@@ -120,11 +134,11 @@ def send_ADC_CMD(adc_msg_params):
 
 
 def send_Stim_CMD(stim_msg_params):
-    send_CMD(min_handler, STIM_CON_MSG_ID, stim_msg_params)
+    send_CMD_with_Retries(min_handler, STIM_CON_MSG_ID, stim_msg_params)
 
 
 def send_Stop_Proc_CMD(stop_proc_msg_params):
-    send_CMD(min_handler, STOP_PROC_ID, stop_proc_msg_params)
+    send_CMD_with_Retries(min_handler, STOP_PROC_ID, stop_proc_msg_params)
 
 
 if __name__ == "__main__":
@@ -132,9 +146,9 @@ if __name__ == "__main__":
     min_handler = MINTransportSerial("COM3", 115200)
     
     stim_msg_params = CmdMsgParams(100, 50, 3)
-    #send_Stim_CMD(stim_msg_params)
+    send_Stim_CMD(stim_msg_params)
     #send_Stop_Proc_CMD(stim_msg_params)
-    send_ADC_CMD(stim_msg_params)
+    #send_ADC_CMD(stim_msg_params)
 
     # CMD = 4
     # COMM_SUCC = False
