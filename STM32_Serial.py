@@ -88,22 +88,33 @@ def send_CMD_with_Retries(min_handler, cmd_id, cmd_msg_params, num_of_retry_atte
     return comm_ack
 
 def get_Data(min_handler: MINTransportSerial):
-    data_xfer_complete = False
-    raw_bin_data = b''
-    while(not(data_xfer_complete)):
-        #Polls to see if MIN frames have been received 
-        rx_frames = wait_for_frames(min_handler)
 
-        #Look at the frames to see if an "End of Data" has been sent
-        #If not, keep polling. Ignores any payload data after "End of Data" Msg.
-        for frame in rx_frames:
-            if(frame.min_id == END_OF_DATA_ID):
-                data_xfer_complete = True
-                break #Ensure that data retrieved of/after the final data cmd message is not considered part of the data
+    rx_frames = wait_for_ACK(min_handler, 15.0)#Timeout should be long enough to allow for the data to be collected 
+                                               #plus some for it to be sent
 
-            raw_bin_data += frame.payload
+    if(rx_frames):
 
-    return raw_bin_data
+        data_xfer_complete = False
+        raw_bin_data = b''
+        while(not(data_xfer_complete)):
+
+            #Look at the frames to see if an "End of Data" has been sent
+            #If not, keep polling. Ignores any payload data after "End of Data" Msg.
+            for frame in rx_frames:
+                if(frame.min_id == END_OF_DATA_ID):
+                    data_xfer_complete = True
+                    break #Ensure that data retrieved of/after the final data cmd message is not considered part of the data
+
+                raw_bin_data += frame.payload
+
+            rx_frames = wait_for_ACK(min_handler, 0.5) #Gather frames that come in after the the initial poll. The timeout is much 
+                                                       #less since it doesn't have to account for the time to actually gather the data
+            
+            #This is just so if a timeout occurs, the while loop stops.
+            if(not(rx_frames)):
+                break
+
+    return raw_bin_data, data_xfer_complete 
 
 def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
     """Takes individual bytes and concatenates them into int type based on num_bytes_per_int"""
@@ -118,8 +129,7 @@ def send_ADC_CMD(adc_msg_params):
     send_CMD_with_Retries(min_handler, DATA_LOG_MSG_ID, adc_msg_params)
 
     #Collect data after ACK from uC
-    raw_bin_data = get_Data(min_handler)
-    print(raw_bin_data)
+    raw_bin_data, all_data_gathered = get_Data(min_handler)
  
     #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
     data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
@@ -146,16 +156,10 @@ if __name__ == "__main__":
     min_handler = MINTransportSerial("COM3", 115200)
     
     stim_msg_params = CmdMsgParams(100, 50, 3)
-    send_Stim_CMD(stim_msg_params)
+    #send_Stim_CMD(stim_msg_params)
     #send_Stop_Proc_CMD(stim_msg_params)
-    #send_ADC_CMD(stim_msg_params)
+    send_ADC_CMD(stim_msg_params)
 
-    # CMD = 4
-    # COMM_SUCC = False
-    # while(not(COMM_SUCC)):
-    #     print()
-    #     print()
-    #     COMM_SUCC = send_CMD(min_handler, CMD)
 
 
     
