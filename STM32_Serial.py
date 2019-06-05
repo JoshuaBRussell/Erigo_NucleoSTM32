@@ -4,20 +4,28 @@ import time
 import matplotlib.pyplot as plt
 from min import MINTransportSerial
 
-START_BYTE = b'\x02' #ASCII Start of Text
-DELIMITER = b'\xF1'  #
-END_BYTE = b'\x03'   #ASCII End of Text
-
 SEND_ATTEMPS = 5
 
 #Msg IDs
+NO_MSG_ID = 0
+STIM_CON_MSG_ID = 1
+DATA_LOG_MSG_ID = 2
 END_OF_DATA_ID = 3
+STOP_PROC_ID = 4
 
 BYTES_PER_DATA_ITEM = 4
 
 TEST_AMPLITUDE_MA  = 300
 NM_AMPITUDE_MA = 80
-FREQ_SEL = 3 #0/1/2/3 <->12.5/25/50/100Hz  
+FREQ_SEL = 3 #0/1/2/3 <->12.5/25/50/100Hz
+
+class CmdMsgParams():
+
+    def __init__(self,diag_amp_ma=0, nm_amp_ma=0, freq_sel=0):
+        self.diag_amp_ma = diag_amp_ma
+        self.nm_amp_ma = nm_amp_ma
+        self.freq_sel = freq_sel
+        
 
 def wait_for_ACK(min_handler: MINTransportSerial, timeout = 0.1):
     start = time.time()
@@ -39,17 +47,17 @@ def wait_for_frames(min_handler: MINTransportSerial):
         if frames:
             return frames
 
-def send_CMD(min_handler: MINTransportSerial, cmd):
+def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
     """Sends a MIN frame with the CMD as the MIN identifier byte. Then waits for an ACK from the uC with the same CMD."""
     #junk data at the moment
     data = b''
-    data_array = [100, 50, 3]
-    for i in range(len(data_array)):
-        data+=data_array[i].to_bytes(2, byteorder="big")
+    data+=cmd_msg_params.diag_amp_ma.to_bytes(2, byteorder="big")
+    data+=cmd_msg_params.nm_amp_ma.to_bytes(2, byteorder="big")
+    data+=cmd_msg_params.freq_sel.to_bytes(2, byteorder="big")
     
     #Send CMD
     print("Send CMD...")
-    min_handler.send_frame(cmd, data)
+    min_handler.send_frame(cmd_id, data)
     
     #Wait for ACK from uC
     print("Waiting for ACK...")
@@ -57,7 +65,7 @@ def send_CMD(min_handler: MINTransportSerial, cmd):
 
     #There should only be one frame, but just in case/"wait for ACK" returns a lit of frames
     for frame in frames:
-        if frame.min_id == cmd:
+        if frame.min_id == cmd_id:
             print("ACK Received...")
             return True
         else:   
@@ -92,35 +100,8 @@ def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
 
     return data
 
-def main(Test_Amplitude_mA, NM_Amplitude_mA, Freq_Sel):
-    ser = serial.Serial("COM3", 115200, timeout = 1.0)
-    for i in range(5):
-        #sdata = START_BYTE + (Test_Amplitude_mA).to_bytes(2, byteorder = 'big') + DELIMITER + (NM_Amplitude_mA).to_bytes(2, byteorder = 'big') + DELIMITER + (Freq_Sel).to_bytes(2, byteorder = 'big') + END_BYTE
-        data_list = [170, 170, 170, 1, 4, 3, 1, 1, 3, 28, 123, 113, 228, 85]
-        data = b''
-        for i in range(len(data_list)):
-            data += (data_list[i].to_bytes(1, byteorder='big'))
-        print(data)
-        print("Sending Data...%d", i)
-        print(ser.write(data))
-        print("READ: ", ser.read(16))
-        time.sleep(1)
-
-
-    ser.close()
-
-
-if __name__ == "__main__":
-    #main(TEST_AMPLITUDE_MA, NM_AMPITUDE_MA, FREQ_SEL)
-
-    min_handler = MINTransportSerial("COM3", 115200)
-    
-    CMD = 2
-    COMM_SUCC = False
-    while(not(COMM_SUCC)):
-        print()
-        print()
-        COMM_SUCC = send_CMD(min_handler, CMD)
+def send_ADC_CMD(adc_msg_params):
+    send_CMD(min_handler, DATA_LOG_MSG_ID, adc_msg_params)
 
     #Collect data after ACK from uC
     raw_bin_data = get_Data(min_handler)
@@ -137,7 +118,30 @@ if __name__ == "__main__":
     plt.plot(data)
     plt.show()
 
-    print("Comm was a Succ")
+
+def send_Stim_CMD(stim_msg_params):
+    send_CMD(min_handler, STIM_CON_MSG_ID, stim_msg_params)
+
+
+def send_Stop_Proc_CMD(stop_proc_msg_params):
+    send_CMD(min_handler, STOP_PROC_ID, stop_proc_msg_params)
+
+
+if __name__ == "__main__":
+
+    min_handler = MINTransportSerial("COM3", 115200)
+    
+    stim_msg_params = CmdMsgParams(100, 50, 3)
+    #send_Stim_CMD(stim_msg_params)
+    #send_Stop_Proc_CMD(stim_msg_params)
+    send_ADC_CMD(stim_msg_params)
+
+    # CMD = 4
+    # COMM_SUCC = False
+    # while(not(COMM_SUCC)):
+    #     print()
+    #     print()
+    #     COMM_SUCC = send_CMD(min_handler, CMD)
 
 
     
