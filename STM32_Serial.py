@@ -4,8 +4,6 @@ import time
 import matplotlib.pyplot as plt
 from min import MINTransportSerial
 
-SEND_ATTEMPS = 5
-
 #Msg IDs
 NO_MSG_ID = 0
 STIM_CON_MSG_ID = 1
@@ -18,6 +16,8 @@ BYTES_PER_DATA_ITEM = 4
 TEST_AMPLITUDE_MA  = 300
 NM_AMPITUDE_MA = 80
 FREQ_SEL = 3 #0/1/2/3 <->12.5/25/50/100Hz
+
+_min_handler = None
 
 class CmdMsgParams():
 
@@ -47,7 +47,7 @@ def wait_for_frames(min_handler: MINTransportSerial):
         if frames:
             return frames
 
-def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
+def send_CMD(cmd_id, cmd_msg_params):
     """Sends a MIN frame with the CMD as the MIN identifier byte. Then waits for an ACK from the uC with the same CMD.
        Returns False if no ACK was received within timeout or if the wrong cmd_id was returned as an ACK"""
     
@@ -58,11 +58,11 @@ def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
     
     #Send CMD
     print("Send CMD...")
-    min_handler.send_frame(cmd_id, data)
+    _min_handler.send_frame(cmd_id, data)
     
     #Wait for ACK from uC
     print("Waiting for ACK...")
-    frames = wait_for_ACK(min_handler, timeout = 1.0)
+    frames = wait_for_ACK(_min_handler, timeout = 1.0)
 
     #There should only be one frame, but just in case/"wait for ACK" returns a list of frames
     for frame in frames:
@@ -76,20 +76,20 @@ def send_CMD(min_handler: MINTransportSerial, cmd_id, cmd_msg_params):
     return False
 
 
-def send_CMD_with_Retries(min_handler, cmd_id, cmd_msg_params, num_of_retry_attempts=5):
+def send_CMD_with_Retries(cmd_id, cmd_msg_params, num_of_retry_attempts=5):
     """Keeps sending CMD messages until an ACK is received or until num_of_retry_attempts messages have been
        sent with no repsonse. Returns True if an ACK was received, returns false otherwise."""
     comm_ack = False
     msg_send_attemps = 0
     while(msg_send_attemps<num_of_retry_attempts and not(comm_ack)):
         msg_send_attemps+=1
-        comm_ack = send_CMD(min_handler, cmd_id, cmd_msg_params)
+        comm_ack = send_CMD(cmd_id, cmd_msg_params)
     
     return comm_ack
 
-def get_Data(min_handler: MINTransportSerial):
+def get_Data():
 
-    rx_frames = wait_for_ACK(min_handler, 15.0)#Timeout should be long enough to allow for the data to be collected 
+    rx_frames = wait_for_ACK(_min_handler, 15.0)#Timeout should be long enough to allow for the data to be collected 
                                                #plus some for it to be sent
 
     if(rx_frames):
@@ -107,7 +107,7 @@ def get_Data(min_handler: MINTransportSerial):
 
                 raw_bin_data += frame.payload
 
-            rx_frames = wait_for_ACK(min_handler, 0.5) #Gather frames that come in after the the initial poll. The timeout is much 
+            rx_frames = wait_for_ACK(_min_handler, 0.5) #Gather frames that come in after the the initial poll. The timeout is much 
                                                        #less since it doesn't have to account for the time to actually gather the data
             
             #This is just so if a timeout occurs, the while loop stops.
@@ -126,10 +126,10 @@ def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
     return data
 
 def send_ADC_CMD(adc_msg_params):
-    send_CMD_with_Retries(min_handler, DATA_LOG_MSG_ID, adc_msg_params)
+    send_CMD_with_Retries(DATA_LOG_MSG_ID, adc_msg_params)
 
     #Collect data after ACK from uC
-    raw_bin_data, all_data_gathered = get_Data(min_handler)
+    raw_bin_data, all_data_gathered = get_Data()
  
     #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
     data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
@@ -144,16 +144,21 @@ def send_ADC_CMD(adc_msg_params):
 
 
 def send_Stim_CMD(stim_msg_params):
-    send_CMD_with_Retries(min_handler, STIM_CON_MSG_ID, stim_msg_params)
+    send_CMD_with_Retries(STIM_CON_MSG_ID, stim_msg_params)
 
 
 def send_Stop_Proc_CMD(stop_proc_msg_params):
-    send_CMD_with_Retries(min_handler, STOP_PROC_ID, stop_proc_msg_params)
+    send_CMD_with_Retries(STOP_PROC_ID, stop_proc_msg_params)
 
+
+
+def setupSTM32Serial():
+    global _min_handler
+    _min_handler = MINTransportSerial("COM3", 115200)
 
 if __name__ == "__main__":
 
-    min_handler = MINTransportSerial("COM3", 115200)
+    setupSTM32Serial()
     
     stim_msg_params = CmdMsgParams(100, 50, 3)
     #send_Stim_CMD(stim_msg_params)
