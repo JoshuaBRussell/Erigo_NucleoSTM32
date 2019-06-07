@@ -8,6 +8,8 @@ from matplotlib.figure import Figure
 import numpy as np
 import sys
 
+from STM32_Serial import *
+
 #Const Font variables 
 LARGE_FONT = ("Verdana", 12)
 
@@ -42,6 +44,8 @@ class ErigoGUI(tk.Tk):
 
         #Brings starting page to top of view
         self.show_frame(StartPage)
+
+        setupSTM32Serial()
 
     def show_frame(self, controller):
         frame = self.frames[controller]
@@ -155,11 +159,95 @@ class StartPage(tk.Frame):
 
     def Update_ADC_Pos(self):
 
-        data = self.Send_Get_Pos_Data_Command()
+        #data = self.Send_Get_Pos_Data_Command()
+        self.Send_Get_Pos_Data_Command()
+
+        #this is added so the data can be gathered x amount of ms later (giving time for the uC to gather it)
+        #then TKinter can call the function to gather the data.
+        #This helps with not blocking the GUI mainloop
+        self.after(10000, self.Get_Pos_Data)
         
+        # #if data is valid...
+        # x_data = list(range(len(data)))
+        # y_data = data
+        
+        # self.angle_plot.clear()
+
+        # #Scatter Plot for Raw Data
+        # self.angle_plot.scatter(x_data, y_data, color="blue")
+        # self.angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
+        # self.angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
+        # #self.angle_plot.set_xlim([0.0, 1000.0])
+        # #self.angle_plot.set_ylim([min(y_data), max(y_data)])
+
+        # #Processing on Data (if any more data processing were to be done, I would consider making it a seperate module)
+        # max_90_percentile = np.percentile(y_data, 90.0)
+        # min_10_percentile = np.percentile(y_data, 10.0)
+        # mid_50_percentile = np.percentile(y_data, 50.0)
+        # AVG = (max_90_percentile+min_10_percentile)/2
+
+        # self.ADC_Stats_Max.set("Max ADC Pos: " + str(int(max_90_percentile)))
+        # self.ADC_Stats_Min.set("Min ADC Pos: " + str(int(min_10_percentile)))
+        # self.ADC_Stats_Rec.set("Rec ADC Threshold: " + str(int(AVG)))
+
+        # self.angle_plot.hlines(max_90_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
+        # self.angle_plot.hlines(min_10_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
+        # self.angle_plot.hlines(AVG, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X, colors = "red")
+
+        # self.canvas.draw()
+
+    def Send_Stim_Command(self, nm_amp, diag_amp, freq, adc_threshold):
+        msg_params = CmdMsgParams(int(diag_amp), int(nm_amp), int(freq))
+        
+        send_Stim_CMD(msg_params)
+         
+        self.Write_to_TextBox("Stim Cmd Sent...")
+        self.Write_to_TextBox("NM AMP: " + str(nm_amp))
+        self.Write_to_TextBox("DIAG AMP: " + str(diag_amp))
+        self.Write_to_TextBox("FREQ: " + str(freq))
+        self.Write_to_TextBox("ADC THRESHOLD: " + str(adc_threshold))
+
+    def Send_Stop_Stim_Command(self):
+        msg_params = CmdMsgParams()
+        send_Stop_Proc_CMD(msg_params)
+        self.Write_to_TextBox("Stop Stim Cmd Sent...")
+
+    def Send_Get_Pos_Data_Command(self):
+        self.Write_to_TextBox("Sending Cmd...")
+        adc_msg_params = CmdMsgParams()
+        send_CMD_with_Retries(DATA_LOG_MSG_ID, adc_msg_params)
+
+        # #Collect data after ACK from uC
+        # raw_bin_data, all_data_gathered = get_Data()
+    
+        # #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
+        # data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
+
+        # # #data collected from uC
+        # # theta = np.arange(0.0, 1000.0, 1.0)
+        # # y = 750.0*np.sin((0.1/np.pi)*theta)+3000.0 + np.random.normal(0.0, 25.0, theta.size)
+        # # data = np.vstack((theta, y))
+        # self.Write_to_TextBox("Gathered the data...")
+
+        # return data
+
+    def Get_Pos_Data(self):
+
+        #Collect data after ACK from uC
+        raw_bin_data, all_data_gathered = get_Data()
+    
+        #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
+        data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
+
+        # #data collected from uC
+        # theta = np.arange(0.0, 1000.0, 1.0)
+        # y = 750.0*np.sin((0.1/np.pi)*theta)+3000.0 + np.random.normal(0.0, 25.0, theta.size)
+        # data = np.vstack((theta, y))
+        self.Write_to_TextBox("Gathered the data...")
+
         #if data is valid...
-        x_data = data[0, :]
-        y_data = data[1, :]
+        x_data = list(range(len(data)))
+        y_data = data
         
         self.angle_plot.clear()
 
@@ -186,26 +274,6 @@ class StartPage(tk.Frame):
 
         self.canvas.draw()
 
-    def Send_Stim_Command(self, nm_amp, diag_amp, freq, adc_threshold):
-        self.Write_to_TextBox("Stim Cmd Sent...")
-        self.Write_to_TextBox("NM AMP: " + str(nm_amp))
-        self.Write_to_TextBox("DIAG AMP: " + str(diag_amp))
-        self.Write_to_TextBox("FREQ: " + str(freq))
-        self.Write_to_TextBox("ADC THRESHOLD: " + str(adc_threshold))
-
-    def Send_Stop_Stim_Command(self):
-        self.Write_to_TextBox("Stop Stim Cmd Sent...")
-
-    def Send_Get_Pos_Data_Command(self):
-        self.Write_to_TextBox("Sending Cmd...")
-
-        #data collected from uC
-        theta = np.arange(0.0, 1000.0, 1.0)
-        y = 750.0*np.sin((0.1/np.pi)*theta)+3000.0 + np.random.normal(0.0, 25.0, theta.size)
-        data = np.vstack((theta, y))
-        self.Write_to_TextBox("Gathered the data...")
-
-        return data
 
 
 
