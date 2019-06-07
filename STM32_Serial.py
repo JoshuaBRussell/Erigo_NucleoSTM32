@@ -92,10 +92,9 @@ def get_Data():
     rx_frames = wait_for_ACK(_min_handler, 15.0)#Timeout should be long enough to allow for the data to be collected 
                                                #plus some for it to be sent
 
+    data_xfer_complete = False
+    raw_bin_data = b''
     if(rx_frames):
-
-        data_xfer_complete = False
-        raw_bin_data = b''
         while(not(data_xfer_complete)):
 
             #Look at the frames to see if an "End of Data" has been sent
