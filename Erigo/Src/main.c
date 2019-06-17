@@ -203,6 +203,12 @@ int main(void)
 
   CMD_DATA_Handle = comm_init();  //Init comms and return a msg handler
 
+  //Define the circular buffer used during stim control mode
+  stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
+
+  //Define the circular buffer used during ADC output mode
+  meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -219,9 +225,6 @@ int main(void)
 	    	//since it makes sure it is in the STIM_CONTROL state first.
 	    	setGlobalState_STIM_CONTROL();
 
-	    	//Define the circular buffer
-			stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
-
 			//Start stimulation
 			stim_control_setup(CMD_DATA_Handle);
 			stim_control_start();
@@ -236,6 +239,7 @@ int main(void)
 
 			num_of_threshold_crossings = 0; //Reset this to zero once stimulation has ended
 			stim_control_reset();
+			circ_buff_reset(stim_adc_circ_buff);
 
 			//Reset to Idle State only once stim control has been reset
 		    setGlobalState_IDLE_STATE();
@@ -245,9 +249,6 @@ int main(void)
 	    }else if (CMD_DATA_Handle->cmd_id == DATA_LOG_MSG_IDENTIFIER){
 
 	    	setGlobalState_ADC_OUTPUT();
-
-	        //Define the circular buffer
-	        meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
 
 	  	    //----Collect ADC Data----//
 
@@ -262,6 +263,8 @@ int main(void)
 
 	  	    //----Send Data to Host----//
 	  	    comm_send_data(meas_adc_buffer_array, ADC_DATA_AMOUNT);
+
+	  	    circ_buff_reset(meas_adc_circ_buff);
 
 	  	    //Reset to Idle State
 	  	    setGlobalState_IDLE_STATE();
