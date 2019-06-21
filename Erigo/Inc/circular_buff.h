@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define NUMBER_OF_BUFFS 5
+#define MAX_NUMBER_OF_BUFFS 5
 
 typedef struct circ_buff* circ_buff_handle;
 

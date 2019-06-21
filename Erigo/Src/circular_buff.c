@@ -19,7 +19,7 @@ struct circ_buff{
 };
 
 //Creates a user defined number of buffs of size NUMBER_OF_BUFFS. 
-static struct circ_buff CIRC_BUFFS[NUMBER_OF_BUFFS];
+static struct circ_buff CIRC_BUFFS[MAX_NUMBER_OF_BUFFS];
 static size_t num_of_buffs_issued = 0;
 
 //----static helper functions----//
@@ -49,7 +49,7 @@ circ_buff_handle circ_buff_init(uint32_t* buffer, uint32_t length){
     assert(buffer && length);
     
     circ_buff_handle circ_buff = NULL;
-    if(num_of_buffs_issued != NUMBER_OF_BUFFS){
+    if(num_of_buffs_issued < MAX_NUMBER_OF_BUFFS){
         circ_buff = CIRC_BUFFS+num_of_buffs_issued; 
         num_of_buffs_issued++;
         circ_buff->buffer = buffer;

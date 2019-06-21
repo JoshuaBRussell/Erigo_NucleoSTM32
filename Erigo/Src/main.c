@@ -205,10 +205,11 @@ int main(void)
 
   //Define the circular buffer used during stim control mode
   stim_adc_circ_buff = circ_buff_init(stim_adc_buffer_array, ADC_BUFFER_SIZE);
+  while(!stim_adc_circ_buff){}; //Infinite loop in case it returns NULL
 
   //Define the circular buffer used during ADC output mode
   meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
-
+  while(!meas_adc_circ_buff){}; //Infinite loop in case it returns NULL
   /* USER CODE END 2 */
 
   /* Infinite loop */
