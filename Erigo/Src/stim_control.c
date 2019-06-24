@@ -141,6 +141,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			case STIM_FREQ_TRIGGER_LOW:
 				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
 				STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+
+				HAL_GPIO_WritePin(Stim_NM_GPIO_Port, Stim_NM_Pin, GPIO_PIN_SET);
 				break;
 
 			case STIM_FREQ_TRIGGER_HIGH:
@@ -153,12 +155,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					__HAL_TIM_SET_AUTORELOAD(&htim3, T_LOW);
 					STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 				}
+
+				HAL_GPIO_WritePin(Stim_NM_GPIO_Port, Stim_NM_Pin, GPIO_PIN_RESET);
 				break;
 
 			case STIM_TEST_TRIGGER_LOW_PRETEST:
 				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
 				time_of_diagnostic_pulse = HAL_GetTick();
 				STIM_STATE = STIM_TEST_TRIGGER_HIGH;
+
+				HAL_GPIO_WritePin(Stim_Test_GPIO_Port, Stim_Test_Pin, GPIO_PIN_SET);
 				break;
 
 			case STIM_TEST_TRIGGER_HIGH:
@@ -167,11 +173,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
 				HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 				STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
+
+				HAL_GPIO_WritePin(Stim_Test_GPIO_Port, Stim_Test_Pin, GPIO_PIN_RESET);
 				break;
 
 			case STIM_TEST_TRIGGER_LOW_POSTTEST:
 				__HAL_TIM_SET_AUTORELOAD(&htim3, TPULSE_IN_COUNTS);
 				STIM_STATE = STIM_FREQ_TRIGGER_HIGH;
+
+				HAL_GPIO_WritePin(Stim_NM_GPIO_Port, Stim_NM_Pin, GPIO_PIN_SET);
 				break;
 			}
 		}else{
