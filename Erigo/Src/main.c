@@ -200,6 +200,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  setGlobalState_IDLE_STATE();
 
   CMD_DATA_Handle = comm_init();  //Init comms and return a msg handler
 
@@ -550,6 +551,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, IDLE_State_Pin|ADC_Output_State_Pin|Stim_State_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
@@ -570,6 +574,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IDLE_State_Pin ADC_Output_State_Pin Stim_State_Pin */
+  GPIO_InitStruct.Pin = IDLE_State_Pin|ADC_Output_State_Pin|Stim_State_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SCOPE_Pin_Pin */
   GPIO_InitStruct.Pin = SCOPE_Pin_Pin;
