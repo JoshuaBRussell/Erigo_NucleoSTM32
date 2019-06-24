@@ -86,6 +86,12 @@ void Error_Handler(void);
 #define USART_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
+#define IDLE_State_Pin GPIO_PIN_13
+#define IDLE_State_GPIO_Port GPIOB
+#define ADC_Output_State_Pin GPIO_PIN_14
+#define ADC_Output_State_GPIO_Port GPIOB
+#define Stim_State_Pin GPIO_PIN_15
+#define Stim_State_GPIO_Port GPIOB
 #define SCOPE_Pin_Pin GPIO_PIN_8
 #define SCOPE_Pin_GPIO_Port GPIOC
 #define TMS_Pin GPIO_PIN_13
