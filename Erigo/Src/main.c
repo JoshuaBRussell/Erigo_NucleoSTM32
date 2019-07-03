@@ -237,6 +237,7 @@ int main(void)
 			//Start collecting ADC position samples
 			HAL_TIM_Base_Start_IT(&htim2);
 			HAL_ADC_Start_IT(&hadc1);
+			HAL_ADC_Start_IT(&hadc2);
 
 			//Loops while Reset Msg isn't received AND TIMEOUT hasn't expired
 			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
