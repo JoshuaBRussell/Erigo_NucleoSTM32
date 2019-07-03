@@ -121,6 +121,7 @@ static void MX_ADC2_Init(void);
 uint32_t num_of_threshold_crossings = 0;
 
 uint32_t gADC_reading = 0;
+uint32_t gADC_reading_Two = 0;
 
 //Two buffers are used since it is easier to use separate buffer buffer arrays/circ buffers
 //since they are different sizes.
@@ -662,10 +663,12 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 	gADC_reading = HAL_ADC_GetValue(&hadc1);
+	gADC_reading_Two = HAL_ADC_GetValue(&hadc2);
 	//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 	if(getGlobalState() == ADC_OUTPUT){
-		circ_buff_put(meas_adc_circ_buff, gADC_reading);
+        uint32_t adc_logged = gADC_reading | (gADC_reading_Two << 16);
+		circ_buff_put(meas_adc_circ_buff, adc_logged);
 	}
 	else if(getGlobalState() == STIM_CONTROL){
 	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
