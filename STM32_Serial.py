@@ -11,7 +11,7 @@ DATA_LOG_MSG_ID = 2
 END_OF_DATA_ID = 3
 STOP_PROC_ID = 4
 
-BYTES_PER_DATA_ITEM = 4
+BYTES_PER_DATA_ITEM = 2
 
 TEST_AMPLITUDE_MA  = 300
 NM_AMPITUDE_MA = 80
@@ -116,13 +116,15 @@ def get_Data():
     return raw_bin_data, data_xfer_complete 
 
 def process_raw_serial_data(raw_bin_data, num_bytes_per_int):
-    """Takes individual bytes and concatenates them into int type based on num_bytes_per_int"""
+    """Takes individual bytes and concatenates them into int type based on num_bytes_per_int.
+       Since two ADC's are being used, every other data item is for a specific ADC.          """
     data = []
     for i in range(len(raw_bin_data)//(num_bytes_per_int)):
         i = num_bytes_per_int*i
+
         data.append(int.from_bytes(raw_bin_data[i:i+num_bytes_per_int], byteorder='big'))
 
-    return data
+    return data[0::2], data[1::2] #Returns even elements for one ADC, and odd for the other
 
 def send_ADC_CMD(adc_msg_params):
     send_CMD_with_Retries(DATA_LOG_MSG_ID, adc_msg_params)

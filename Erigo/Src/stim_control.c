@@ -33,6 +33,7 @@ extern DAC_HandleTypeDef hdac;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim2;
 extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 
 static enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
@@ -121,6 +122,7 @@ void stim_control_reset(){
 
 	HAL_TIM_Base_Stop_IT(&htim2); //Turn of ADC sampling
 	HAL_ADC_Stop_IT(&hadc1);
+	HAL_ADC_Stop_IT(&hadc2);
 
 
 }

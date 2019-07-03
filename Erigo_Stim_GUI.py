@@ -237,7 +237,7 @@ class StartPage(tk.Frame):
         raw_bin_data, all_data_gathered = get_Data()
     
         #----Since all the data is gathered at this point, there is no need to take speed into consideration for the Serial Port.        
-        data = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
+        data_ADC1, data_ADC2 = process_raw_serial_data(raw_bin_data, BYTES_PER_DATA_ITEM)
 
         # #data collected from uC
         # theta = np.arange(0.0, 1000.0, 1.0)
@@ -246,22 +246,22 @@ class StartPage(tk.Frame):
         self.Write_to_TextBox("Gathered the data...")
 
         #if data is valid...
-        x_data = list(range(len(data)))
-        y_data = data
+        x_data = list(range(len(data_ADC1)))
         
         self.angle_plot.clear()
 
         #Scatter Plot for Raw Data
-        self.angle_plot.scatter(x_data, y_data, color="blue")
+        self.angle_plot.scatter(x_data, data_ADC1, color="blue")
+        self.angle_plot.scatter(x_data, data_ADC2, color="green")
         self.angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
         self.angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
         #self.angle_plot.set_xlim([0.0, 1000.0])
-        #self.angle_plot.set_ylim([min(y_data), max(y_data)])
+        #self.angle_plot.set_ylim([min(data_ADC1), max(data_ADC1)])
 
         #Processing on Data (if any more data processing were to be done, I would consider making it a seperate module)
-        max_90_percentile = np.percentile(y_data, 90.0)
-        min_10_percentile = np.percentile(y_data, 10.0)
-        mid_50_percentile = np.percentile(y_data, 50.0)
+        max_90_percentile = np.percentile(data_ADC1, 90.0)
+        min_10_percentile = np.percentile(data_ADC1, 10.0)
+        mid_50_percentile = np.percentile(data_ADC1, 50.0)
         AVG = (max_90_percentile+min_10_percentile)/2
 
         self.ADC_Stats_Max.set("Max ADC Pos: " + str(int(max_90_percentile)))

@@ -89,6 +89,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 
 DAC_HandleTypeDef hdac;
 
@@ -109,6 +110,7 @@ static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_DAC_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -119,6 +121,7 @@ static void MX_TIM2_Init(void);
 uint32_t num_of_threshold_crossings = 0;
 
 uint32_t gADC_reading = 0;
+uint32_t gADC_reading_Two = 0;
 
 //Two buffers are used since it is easier to use separate buffer buffer arrays/circ buffers
 //since they are different sizes.
@@ -198,6 +201,7 @@ int main(void)
   MX_TIM3_Init();
   MX_DAC_Init();
   MX_TIM2_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
   setGlobalState_IDLE_STATE();
@@ -234,6 +238,7 @@ int main(void)
 			//Start collecting ADC position samples
 			HAL_TIM_Base_Start_IT(&htim2);
 			HAL_ADC_Start_IT(&hadc1);
+			HAL_ADC_Start_IT(&hadc2);
 
 			//Loops while Reset Msg isn't received AND TIMEOUT hasn't expired
 			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
@@ -257,11 +262,13 @@ int main(void)
 	        //Turn on HW Timer/ADC to collect samples
 	  	    HAL_TIM_Base_Start_IT(&htim2);
 	  	    HAL_ADC_Start_IT(&hadc1);
+	  	    HAL_ADC_Start_IT(&hadc2);
 
 	  	    while(!circ_buff_is_full(meas_adc_circ_buff));
 
 	  	    HAL_TIM_Base_Stop_IT(&htim2);
 	  	    HAL_ADC_Stop_IT(&hadc1);
+	  	    HAL_ADC_Stop_IT(&hadc2);
 
 	  	    //----Send Data to Host----//
 	  	    comm_send_data(meas_adc_buffer_array, ADC_DATA_AMOUNT);
@@ -335,6 +342,7 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
+  ADC_MultiModeTypeDef multimode = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
@@ -358,6 +366,15 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+  /**Configure the ADC multi-mode 
+  */
+  multimode.Mode = ADC_DUALMODE_REGSIMULT;
+  multimode.DMAAccessMode = ADC_DMAACCESSMODE_DISABLED;
+  multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_5CYCLES;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
   */
   sConfig.Channel = ADC_CHANNEL_0;
@@ -370,6 +387,54 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+  /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
+  */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc2.Init.ScanConvMode = DISABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
+  */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC2_Init 2 */
+
+  /* USER CODE END ADC2_Init 2 */
 
 }
 
@@ -569,12 +634,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -602,11 +661,14 @@ static void MX_GPIO_Init(void)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
+	//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 	gADC_reading = HAL_ADC_GetValue(&hadc1);
+	gADC_reading_Two = HAL_ADC_GetValue(&hadc2);
 	//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 	if(getGlobalState() == ADC_OUTPUT){
-		circ_buff_put(meas_adc_circ_buff, gADC_reading);
+        uint32_t adc_logged = gADC_reading | (gADC_reading_Two << 16);
+		circ_buff_put(meas_adc_circ_buff, adc_logged);
 	}
 	else if(getGlobalState() == STIM_CONTROL){
 	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
