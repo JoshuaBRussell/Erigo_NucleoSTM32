@@ -2,7 +2,7 @@ import tkinter as tk
 
 import matplotlib
 matplotlib.use("TkAgg")
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 import numpy as np
@@ -123,7 +123,7 @@ class StartPage(tk.Frame):
 
         #Canvas is a drawing area for tkinter. We put the matplotlib figure onto the canvas
         self.canvas = FigureCanvasTkAgg(self.Fig, self)
-        self.canvas.show()
+        self.canvas.draw()
 
         #Put all grid/location setting calls in one spot since so it is easier to see all locations at once. 
         self.title.grid(row=0,column=0, sticky = 'N', columnspan = 2) #Stick forces text to be "North". columnspan causes the text to bridge 
