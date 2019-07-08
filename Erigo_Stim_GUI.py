@@ -7,6 +7,7 @@ from matplotlib.figure import Figure
 
 import numpy as np
 import sys
+import serial.tools.list_ports
 
 from STM32_Serial import *
 
@@ -44,8 +45,22 @@ class ErigoGUI(tk.Tk):
 
         #Brings starting page to top of view
         self.show_frame(StartPage)
+        
+        #Connect to first available com port
+        com_ports_not_zero = False
+        com_ports = serial.tools.list_ports.comports() #Returns a Python Iterable
+        
+        for port in com_ports:
+            com_ports_not_zero = True
+            try:
+                setupSTM32Serial(str(port.device))
+                break
+            except:
+                print("Unable to connect to COM Port...")
 
-        setupSTM32Serial()
+        if(not(com_ports_not_zero)):
+            print("No COM Ports available...")
+
 
     def show_frame(self, controller):
         frame = self.frames[controller]

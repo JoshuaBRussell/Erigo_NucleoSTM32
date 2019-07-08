@@ -153,9 +153,9 @@ def send_Stop_Proc_CMD(stop_proc_msg_params):
 
 
 
-def setupSTM32Serial():
+def setupSTM32Serial(com_port):
     global _min_handler
-    _min_handler = MINTransportSerial("COM3", 115200)
+    _min_handler = MINTransportSerial(com_port, 115200)
 
 if __name__ == "__main__":
 
