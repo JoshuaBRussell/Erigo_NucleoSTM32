@@ -1,4 +1,6 @@
 import tkinter as tk
+from tkinter import ttk
+
 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -7,7 +9,6 @@ from matplotlib.figure import Figure
 
 import numpy as np
 import sys
-import serial.tools.list_ports
 
 from STM32_Serial import *
 
@@ -46,20 +47,17 @@ class ErigoGUI(tk.Tk):
         #Brings starting page to top of view
         self.show_frame(StartPage)
         
-        #Connect to first available com port
-        com_ports_not_zero = False
-        com_ports = serial.tools.list_ports.comports() #Returns a Python Iterable
+        print(get_com_ports())
         
-        for port in com_ports:
-            com_ports_not_zero = True
-            try:
-                setupSTM32Serial(str(port.device))
+        #Connect to first available com port
+        com_ports = get_com_ports()
+        
+        if(com_ports):
+            for port in com_ports:
+                setupSTM32Serial(port)
                 break
-            except:
-                print("Unable to connect to COM Port...")
-
-        if(not(com_ports_not_zero)):
-            print("No COM Ports available...")
+        else:
+            print("COM ports not available...")
 
 
     def show_frame(self, controller):
@@ -100,6 +98,9 @@ class StartPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.title = tk.Label(self, text = "ERIGO Stimulation Control", font = LARGE_FONT)
+
+        self.COM_sel_box = ttk.Combobox(self, postcommand = self.update_COM_sel_box)
+        self.COM_Connect_button = tk.Button(self, text = "Connect", command = lambda: self.connect_to_COM())
 
         self.text_box = tk.Text(self)
         self.text_box.config(borderwidth=2)
@@ -147,19 +148,24 @@ class StartPage(tk.Frame):
         self.Place_Widgets()
 
     def Place_Widgets(self):
-        self.title.grid(row=0, column=0)
+        #Put all grid/location setting calls in one spot since so it is easier to see all locations at once. 
+        self.title.grid(row=0,column=0, sticky = 'N', columnspan = 2) #Stick forces text to be "North". columnspan causes the text to bridge 
+                                                                 #the columns used for the label/entry pairs
         self.text_box.grid(row=0, column = 0) #The text box can fit in the same cell as the title (I think), b/c
                                               #the cell is big enough to hold both of them without overlap
 
         self.label_entry.grid(row=1, column = 0)
-        
-        self.Stim_Button.grid(row=5, column=0)
-        self.Stop_Stim_Button.grid(row = 5, column = 1)
-        self.Record_Data_Button.grid(row= 5, column=4)
 
-        self.Max_ADC_Label.grid(row = 3, column=3)
-        self.Rec_ADC_Label.grid(row = 3, column=4)
-        self.Min_ADC_Label.grid(row = 3, column=5)
+        self.COM_sel_box.grid(row=2, column = 1)
+        self.COM_Connect_button.grid(row = 1, column = 1)
+        
+        self.Stim_Button.grid(row=6, column=0)
+        self.Stop_Stim_Button.grid(row = 6, column = 1)
+        self.Record_Data_Button.grid(row= 6, column=4)
+
+        self.Max_ADC_Label.grid(row = 4, column=3)
+        self.Rec_ADC_Label.grid(row = 4, column=4)
+        self.Min_ADC_Label.grid(row = 4, column=5)
 
         self.canvas.get_tk_widget().grid(row=0, column=3, columnspan = 3)
 
@@ -248,6 +254,16 @@ class StartPage(tk.Frame):
         self.canvas.draw()
 
 
+    def update_COM_sel_box(self):
+        list_values = get_com_ports()
+        self.COM_sel_box['values'] = list_values
+
+    def connect_to_COM(self):
+        com_port = self.COM_sel_box.get()
+        if(com_port):
+            setupSTM32Serial(com_port)
+        else:
+            print("COM port not available...")
 
 
 
