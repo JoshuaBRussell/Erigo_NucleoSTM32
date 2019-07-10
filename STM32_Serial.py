@@ -1,5 +1,6 @@
 import serial
 import time
+import serial.tools.list_ports
 
 import matplotlib.pyplot as plt
 from min import MINTransportSerial
@@ -153,9 +154,27 @@ def send_Stop_Proc_CMD(stop_proc_msg_params):
 
 
 
-def setupSTM32Serial():
+def setupSTM32Serial(com_port):
     global _min_handler
-    _min_handler = MINTransportSerial("COM3", 115200)
+    try:
+        _min_handler = MINTransportSerial(com_port, 115200)
+        print("Connected to COM Port:", com_port)
+    except:
+        print("Either COM doesn't exist or has already been connected to...", com_port)
+
+
+#Returns a list of available COM ports
+def get_com_ports():
+    
+    com_ports_not_zero = False
+    com_ports = serial.tools.list_ports.comports() #Returns a Python Iterable
+    com_port_list = []
+    
+    for port in com_ports:
+        com_port_list.append(str(port.device))
+    
+    return com_port_list
+
 
 if __name__ == "__main__":
 
