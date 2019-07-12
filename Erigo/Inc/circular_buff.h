@@ -39,4 +39,6 @@ size_t circ_buff_max_capacity(circ_buff_handle circ_buff);
 size_t circ_buff_size(circ_buff_handle circ_buff);
 
 uint32_t circ_buff_get_avg(circ_buff_handle circ_buff);
+
+uint32_t circ_buff_get_sum(circ_buff_handle circ_buff);
 #endif
