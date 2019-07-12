@@ -30,6 +30,7 @@
 
 //Needed HW Handlers
 extern DAC_HandleTypeDef hdac;
+extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim2;
 extern ADC_HandleTypeDef hadc1;
@@ -130,13 +131,16 @@ void stim_control_reset(){
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	if(htim==&htim4){
+		HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+	}
 
 
 	if (htim==&htim3) {  //This should only run for TIM3's Period Elapse
 		if (getGlobalState() == STIM_CONTROL) {  //This should only run if we are in the correct state(STIM_CONTROL).
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-			HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+			//HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 
 			switch(STIM_STATE)
 			{
