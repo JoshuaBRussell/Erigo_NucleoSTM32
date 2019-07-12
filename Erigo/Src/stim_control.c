@@ -112,8 +112,8 @@ void stim_control_reset(){
 	//( Order is important here. Stim ISR turns off first
 	//so no other stimulation pulses are sent. Then the amplitude. Then the ADC sampling.)
 	HAL_TIM_Base_Stop_IT(&htim3); //Turn of Stim ISR
-	HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
     STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
