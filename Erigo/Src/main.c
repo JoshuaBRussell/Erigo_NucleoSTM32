@@ -117,6 +117,7 @@ static void MX_ADC2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+bool STIM_MODE = false;
 
 uint32_t num_of_threshold_crossings = 0;
 
@@ -130,6 +131,14 @@ uint32_t stim_adc_buffer_array[ADC_BUFFER_SIZE] = {0};
 
 //Buffer for ADC samples while only measuring. This is used as the underlying array for the associated circ buff
 uint32_t meas_adc_buffer_array[ADC_DATA_AMOUNT] = {0};
+
+//Buffer to hold recorded stimulation times
+uint32_t stim_meas_times[10] = {};
+circ_buff_handle stim_meas_time_circ_buff;
+uint32_t avg_delta_t = 0;
+uint32_t prev_time = 0;
+bool first_time = true;
+bool send_predictive_test_pulse = false;
 
 //Declare circular buffer for ADC values while stimulating
 circ_buff_handle stim_adc_circ_buff;
@@ -215,6 +224,10 @@ int main(void)
   //Define the circular buffer used during ADC output mode
   meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
   while(!meas_adc_circ_buff){}; //Infinite loop in case it returns NULL
+
+  stim_meas_time_circ_buff = circ_buff_init(stim_meas_times, 10);
+  while(!stim_meas_time_circ_buff){};
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -242,7 +255,16 @@ int main(void)
 
 			//Loops while Reset Msg isn't received AND TIMEOUT hasn't expired
 			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
-			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0)){};
+			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0))
+			{
+                if(!STIM_MODE && send_predictive_test_pulse){
+                	uint32_t pred_pulse_time = prev_time + avg_delta_t;
+                	if((int32_t)(HAL_GetTick() - pred_pulse_time) > 0){
+                		set_diagnostic_pulse_flag();
+                		send_predictive_test_pulse = false;
+                	}
+                }
+			};
 
 			num_of_threshold_crossings = 0; //Reset this to zero once stimulation has ended
 			stim_control_reset();
@@ -616,10 +638,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, Stim_Test_Pin|Stim_NM_Pin|SCOPE_Pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LD2_Pin|Stim_State_Pin|ADC_Output_State_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(IDLE_State_GPIO_Port, IDLE_State_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, Stim_State_Pin|ADC_Output_State_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -676,18 +701,34 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    //These series of if's should be inside a "should_diagnostic_pulse_be_produced()" function.
 	    if(has_threshold_been_crossed())
 	    {
-		    if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+	    	if(first_time){
+	    	    prev_time = HAL_GetTick();
+	    	    first_time = false;
+	    	}
+	    	else{
+                circ_buff_put(stim_meas_time_circ_buff, HAL_GetTick() - prev_time);
+                prev_time = HAL_GetTick();
+                avg_delta_t = circ_buff_get_avg(stim_meas_time_circ_buff);
+	    	}
+
+	    	if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-		    	//if diagnostic pulse timer has not expired we don't send another pulse for safety
-		    	uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
-		    	if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
-		    		set_diagnostic_pulse_flag();
-		    	}
+	    		if(STIM_MODE){ //stim on crossing
+					//if diagnostic pulse timer has not expired we don't send another pulse for safety
+					uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
+					if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
+						set_diagnostic_pulse_flag();
+					}
+	    		}
+	    		else if(!STIM_MODE){
+	    			send_predictive_test_pulse = true;
+	    		}
 		    }
 		    num_of_threshold_crossings++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
 	    }
 	}
+	//HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
 }
 
 /* USER CODE END 4 */
