@@ -398,7 +398,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -446,7 +446,7 @@ static void MX_ADC2_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -759,7 +759,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 			//if diagnostic pulse timer has not expired we don't send another pulse for safety
 			uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
 			if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
-				__HAL_TIM_SET_AUTORELOAD(&htim4, (uint16_t)(2*avg_delta_t)); //Times 2 since the tick of the timer is 1/2 millisecond
+				__HAL_TIM_SET_AUTORELOAD(&htim4, 1);//(uint16_t)(2*avg_delta_t)); //Times 2 since the tick of the timer is 1/2 millisecond
 				HAL_TIM_Base_Start_IT(&htim4);
 			}
 
