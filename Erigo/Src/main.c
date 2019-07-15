@@ -69,7 +69,7 @@
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
 #define ADC_BUFFER_SIZE 5
-#define ADC_DATA_AMOUNT 1000 //Very temp name
+#define ADC_DATA_AMOUNT 5000 //# of samples to collect
 
 #define TEST_AMP_MA_MIN 0
 #define TEST_AMP_MA_MAX 500
