@@ -258,16 +258,7 @@ int main(void)
 
 			//Loops while Reset Msg isn't received AND TIMEOUT hasn't expired
 			uint32_t expiration_time = HAL_GetTick() + MAX_NM_TIME_MS;
-			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0))
-			{
-                if(!STIM_MODE && send_predictive_test_pulse){
-                	uint32_t pred_pulse_time = prev_time + avg_delta_t;
-                	if((int32_t)(HAL_GetTick() - pred_pulse_time) > 0){
-                		set_diagnostic_pulse_flag();
-                		send_predictive_test_pulse = false;
-                	}
-                }
-			};
+			while(CMD_DATA_Handle->cmd_id != STOP_PROC_ID && ((int32_t)(expiration_time - HAL_GetTick()) > 0)){};
 
 			num_of_threshold_crossings = 0; //Reset this to zero once stimulation has ended
 			stim_control_reset();
@@ -760,16 +751,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 	    	if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-	    		if(STIM_MODE){ //stim on crossing
-					//if diagnostic pulse timer has not expired we don't send another pulse for safety
-					uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
-					if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
-						set_diagnostic_pulse_flag();
-					}
-	    		}
-	    		else if(!STIM_MODE){
-	    			send_predictive_test_pulse = true;
-	    		}
+
+			//if diagnostic pulse timer has not expired we don't send another pulse for safety
+			uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
+			if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
+				__HAL_TIM_SET_AUTORELOAD(&htim4, (uint16_t)(2*avg_delta_t)); //Times 2 since the tick of the timer is 1/2 millisecond
+				HAL_TIM_Base_Start_IT(&htim4);
+			}
+
 		    }
 		    num_of_threshold_crossings++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;

@@ -111,9 +111,14 @@ void stim_control_reset(){
 
 	//( Order is important here. Stim ISR turns off first
 	//so no other stimulation pulses are sent. Then the amplitude. Then the ADC sampling.)
-	HAL_TIM_Base_Stop_IT(&htim3); //Turn of Stim ISR
+	HAL_TIM_Base_Stop_IT(&htim3); //Turn off Stim Waveform Timer ISR
+	HAL_TIM_Base_Stop_IT(&htim4); //Turn off predictive stim ISR so timer doesn't
+	                              //set_diagnostic_pulse_flag after stim state should end
 
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET); //Reset LD2/STim pin
+
+	unset_diagnostic_pulse_flag(); //Ensures the flag is reset. This can still be set sometimes,
+                                   //if the time expires before the diagnostic pulse can be produced
 
     STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
@@ -132,7 +137,10 @@ void stim_control_reset(){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim==&htim4){
-		HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+		HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_SET);
+		set_diagnostic_pulse_flag();
+		HAL_TIM_Base_Stop_IT(&htim4);
+		HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
 	}
 
 
