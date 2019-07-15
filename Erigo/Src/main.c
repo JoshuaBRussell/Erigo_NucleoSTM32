@@ -152,7 +152,10 @@ bool POS_BELOW_THRESHOLD = false;
 
 bool has_threshold_been_crossed(){
 	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
-	return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
+	//return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
+	return (POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) > 4*STIM_TRIGGER_THRESHOLD)) ||
+		  (!POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) < 4*STIM_TRIGGER_THRESHOLD));
+
 }
 
 WAV_CMD_DATA* CMD_DATA_Handle;
@@ -513,7 +516,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 100;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 8316;
+  htim2.Init.Period = 832;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
@@ -739,6 +742,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    //These series of if's should be inside a "should_diagnostic_pulse_be_produced()" function.
 	    if(has_threshold_been_crossed())
 	    {
+	    	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 	    	if(first_time){
 	    	    prev_time = HAL_GetTick();
 	    	    first_time = false;
@@ -764,7 +768,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;
 	    }
 	}
-	//HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
 }
 
 /* USER CODE END 4 */

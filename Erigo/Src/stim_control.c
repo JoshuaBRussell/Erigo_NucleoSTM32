@@ -137,10 +137,8 @@ void stim_control_reset(){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim==&htim4){
-		HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_SET);
 		set_diagnostic_pulse_flag();
 		HAL_TIM_Base_Stop_IT(&htim4);
-		HAL_GPIO_WritePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin, GPIO_PIN_RESET);
 	}
 
 
