@@ -2,3 +2,4 @@ Binaries
 /Debug/
 *.xml
 .settings
+/Release/

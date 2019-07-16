@@ -140,3 +140,9 @@ uint32_t circ_buff_get_avg(circ_buff_handle circ_buff){
 
     return (uint32_t)(circ_buff->buffer_sum/(circ_buff_size(circ_buff)));
 }
+
+uint32_t circ_buff_get_sum(circ_buff_handle circ_buff){
+	assert(circ_buff);
+
+	return (uint32_t)(circ_buff->buffer_sum);
+}

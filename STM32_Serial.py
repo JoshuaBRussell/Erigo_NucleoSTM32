@@ -90,7 +90,7 @@ def send_CMD_with_Retries(cmd_id, cmd_msg_params, num_of_retry_attempts=5):
 
 def get_Data():
 
-    rx_frames = wait_for_ACK(_min_handler, 15.0)#Timeout should be long enough to allow for the data to be collected 
+    rx_frames = wait_for_ACK(_min_handler, 10.0)#Timeout should be long enough to allow for the data to be collected 
                                                #plus some for it to be sent
 
     data_xfer_complete = False

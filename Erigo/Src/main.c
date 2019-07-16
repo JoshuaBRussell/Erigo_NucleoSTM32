@@ -69,7 +69,7 @@
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
 #define ADC_BUFFER_SIZE 5
-#define ADC_DATA_AMOUNT 1000 //Very temp name
+#define ADC_DATA_AMOUNT 5000 //# of samples to collect
 
 #define TEST_AMP_MA_MIN 0
 #define TEST_AMP_MA_MAX 500
@@ -95,6 +95,7 @@ DAC_HandleTypeDef hdac;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart2;
 
@@ -111,12 +112,14 @@ static void MX_TIM3_Init(void);
 static void MX_DAC_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+bool STIM_MODE = false;
 
 uint32_t num_of_threshold_crossings = 0;
 
@@ -131,6 +134,14 @@ uint32_t stim_adc_buffer_array[ADC_BUFFER_SIZE] = {0};
 //Buffer for ADC samples while only measuring. This is used as the underlying array for the associated circ buff
 uint32_t meas_adc_buffer_array[ADC_DATA_AMOUNT] = {0};
 
+//Buffer to hold recorded stimulation times
+uint32_t stim_meas_times[10] = {};
+circ_buff_handle stim_meas_time_circ_buff;
+uint32_t avg_delta_t = 0;
+uint32_t prev_time = 0;
+bool first_time = true;
+bool send_predictive_test_pulse = false;
+
 //Declare circular buffer for ADC values while stimulating
 circ_buff_handle stim_adc_circ_buff;
 
@@ -141,7 +152,10 @@ bool POS_BELOW_THRESHOLD = false;
 
 bool has_threshold_been_crossed(){
 	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
-	return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
+	//return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
+	return (POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) > 4*STIM_TRIGGER_THRESHOLD)) ||
+		  (!POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) < 4*STIM_TRIGGER_THRESHOLD));
+
 }
 
 WAV_CMD_DATA* CMD_DATA_Handle;
@@ -202,6 +216,7 @@ int main(void)
   MX_DAC_Init();
   MX_TIM2_Init();
   MX_ADC2_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   setGlobalState_IDLE_STATE();
@@ -215,6 +230,10 @@ int main(void)
   //Define the circular buffer used during ADC output mode
   meas_adc_circ_buff = circ_buff_init(meas_adc_buffer_array, ADC_DATA_AMOUNT);
   while(!meas_adc_circ_buff){}; //Infinite loop in case it returns NULL
+
+  stim_meas_time_circ_buff = circ_buff_init(stim_meas_times, 10);
+  while(!stim_meas_time_circ_buff){};
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -379,7 +398,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -427,7 +446,7 @@ static void MX_ADC2_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -497,7 +516,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 100;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 8316;
+  htim2.Init.Period = 832;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
@@ -565,6 +584,50 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 41999;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 9;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -616,10 +679,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, Stim_Test_Pin|Stim_NM_Pin|SCOPE_Pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LD2_Pin|Stim_State_Pin|ADC_Output_State_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(IDLE_State_GPIO_Port, IDLE_State_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, Stim_State_Pin|ADC_Output_State_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -676,13 +742,27 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    //These series of if's should be inside a "should_diagnostic_pulse_be_produced()" function.
 	    if(has_threshold_been_crossed())
 	    {
-		    if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
+	    	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
+	    	if(first_time){
+	    	    prev_time = HAL_GetTick();
+	    	    first_time = false;
+	    	}
+	    	else{
+                circ_buff_put(stim_meas_time_circ_buff, HAL_GetTick() - prev_time);
+                prev_time = HAL_GetTick();
+                avg_delta_t = circ_buff_get_avg(stim_meas_time_circ_buff);
+	    	}
+
+	    	if(((num_of_threshold_crossings+1)%STIM_TRIGGER_CYCLE_LIMIT==0))
 		    {
-		    	//if diagnostic pulse timer has not expired we don't send another pulse for safety
-		    	uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
-		    	if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
-		    		set_diagnostic_pulse_flag();
-		    	}
+
+			//if diagnostic pulse timer has not expired we don't send another pulse for safety
+			uint32_t expiration_time = get_time_of_last_diagnostic_pulse() + DIAGNOSTIC_PULSE_TIME;
+			if(!((int32_t)(expiration_time - HAL_GetTick()) > 0)){
+				__HAL_TIM_SET_AUTORELOAD(&htim4, (uint16_t)(2*avg_delta_t)); //Times 2 since the tick of the timer is 1/2 millisecond
+				HAL_TIM_Base_Start_IT(&htim4);
+			}
+
 		    }
 		    num_of_threshold_crossings++;
 		    POS_BELOW_THRESHOLD = !POS_BELOW_THRESHOLD;

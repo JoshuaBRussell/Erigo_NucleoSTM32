@@ -17,7 +17,7 @@ LARGE_FONT = ("Verdana", 12)
 
 #Plot Constants
 PLOT_LWR_LIMIT_X =   0
-PLOT_UPR_LIMIT_X = 1000
+PLOT_UPR_LIMIT_X = 5000
 PLOT_LWR_LIMIT_Y =   0
 PLOT_UPR_LIMIT_Y = 4096
 
@@ -186,7 +186,7 @@ class StartPage(tk.Frame):
         #this is added so the data can be gathered x amount of ms later (giving time for the uC to gather it)
         #then TKinter can call the function to gather the data.
         #This helps with not blocking the GUI mainloop
-        self.after(10000, self.Get_Pos_Data)
+        self.after(1000, self.Get_Pos_Data)
         
 
     def Send_Stim_Command(self, nm_amp, diag_amp, freq, adc_threshold):
