@@ -53,9 +53,9 @@ def send_CMD(cmd_id, cmd_msg_params):
        Returns False if no ACK was received within timeout or if the wrong cmd_id was returned as an ACK"""
     
     data = b''
-    data+=cmd_msg_params.diag_amp_ma.to_bytes(2, byteorder="big")
-    data+=cmd_msg_params.nm_amp_ma.to_bytes(2, byteorder="big")
-    data+=cmd_msg_params.freq_sel.to_bytes(2, byteorder="big")
+    data+=cmd_msg_params.diag_amp_ma.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.nm_amp_ma.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.freq_sel.to_bytes(4, byteorder="big")
     
     #Send CMD
     print("Send CMD...")

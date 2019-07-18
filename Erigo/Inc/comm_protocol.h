@@ -16,7 +16,7 @@
 #include "cmd_msg_struct.h"
 
 #define SERIAL_MESSAGE_SIZE 255
-#define CMD_MESSAGE_SIZE 16
+#define CMD_MESSAGE_SIZE 22
 #define NO_MSG_IDENTIFIER       0x00;
 #define WAV_GEN_MSG_IDENTIFIER  0x01
 #define DATA_LOG_MSG_IDENTIFIER 0x02

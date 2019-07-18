@@ -66,9 +66,9 @@ void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
          //get_control_params passes in. BUT since, the definition of the CMD_DATA container
          //is in this file, we can reference it here.
     	 CMD_DATA.cmd_id = msg_id;
-    	 CMD_DATA.test_amp_ma = ((uint16_t)min_payload[2] << 8) | ((uint16_t)min_payload[1]);
-    	 CMD_DATA.nm_amp_ma =   ((uint16_t)min_payload[4] << 8) | ((uint16_t)min_payload[3]);
-    	 CMD_DATA.freq_sel =    ((uint16_t)min_payload[6] << 8) | ((uint16_t)min_payload[5]);
+    	 CMD_DATA.test_amp_ma = ((uint32_t)min_payload[0] << 32 | (uint32_t)min_payload[1] << 24 | (uint32_t)min_payload[2] << 8 | (uint32_t)min_payload[3]);
+    	 CMD_DATA.nm_amp_ma =   ((uint32_t)min_payload[4] << 32 | (uint32_t)min_payload[5] << 24 | (uint32_t)min_payload[6] << 8 | (uint32_t)min_payload[7]);
+    	 CMD_DATA.freq_sel =    ((uint32_t)min_payload[8] << 32 | (uint32_t)min_payload[9] << 24 | (uint32_t)min_payload[10] << 8 | (uint32_t)min_payload[11]);
 
 
     	 comm_success = true;
