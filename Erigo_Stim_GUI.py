@@ -230,8 +230,8 @@ class StartPage(tk.Frame):
         self.angle_plot.clear()
 
         #Scatter Plot for Raw Data
-        self.angle_plot.scatter(x_data, data_ADC1, color="blue")
-        self.angle_plot.scatter(x_data, data_ADC2, color="green")
+        self.angle_plot.plot(x_data, data_ADC1, color="blue")
+        self.angle_plot.plot(x_data, data_ADC2, color="green")
         self.angle_plot.set_xlim([PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X])
         self.angle_plot.set_ylim([PLOT_LWR_LIMIT_Y, PLOT_UPR_LIMIT_Y])
         #self.angle_plot.set_xlim([0.0, 1000.0])
