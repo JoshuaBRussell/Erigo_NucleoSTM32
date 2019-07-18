@@ -153,8 +153,8 @@ bool POS_BELOW_THRESHOLD = false;
 bool has_threshold_been_crossed(){
 	//STIM_TRIGGER_THRESHOLD +/- STIM_TRIGGER_TOLERANCE implements hysteresis
 	//return (POS_BELOW_THRESHOLD&&all_above_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD + STIM_TRIGGER_TOLERANCE)) || (!POS_BELOW_THRESHOLD&&all_below_threshold(stim_adc_buffer_array, ADC_BUFFER_SIZE, STIM_TRIGGER_THRESHOLD - STIM_TRIGGER_TOLERANCE));
-	return (POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) > 4*STIM_TRIGGER_THRESHOLD)) ||
-		  (!POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) < 4*STIM_TRIGGER_THRESHOLD));
+	return (POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) > circ_buff_max_capacity(stim_adc_circ_buff)*STIM_TRIGGER_THRESHOLD)) ||  //Effectively checks the average of the samples
+		  (!POS_BELOW_THRESHOLD&&(circ_buff_get_sum(stim_adc_circ_buff) < circ_buff_max_capacity(stim_adc_circ_buff)*STIM_TRIGGER_THRESHOLD));
 
 }
 
