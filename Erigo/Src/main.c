@@ -68,6 +68,8 @@
 #define STIM_TRIGGER_TOLERANCE 50
 #define STIM_TRIGGER_CYCLE_LIMIT 5 //Number of times the threshold must be reached before Test Pulse is produced.
 
+#define MINIMUM_ZERO_CROSSING_TIME_MS 200 //Minimum amount of time before another zero crossing is allowed to be detected
+
 #define ADC_BUFFER_SIZE 5
 #define ADC_DATA_AMOUNT 5000 //# of samples to collect
 
@@ -740,7 +742,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	    circ_buff_put(stim_adc_circ_buff , gADC_reading);
 
 	    //These series of if's should be inside a "should_diagnostic_pulse_be_produced()" function.
-	    if(has_threshold_been_crossed())
+	    uint32_t zero_crossing_hyst_time = prev_time + MINIMUM_ZERO_CROSSING_TIME_MS;
+	    if(has_threshold_been_crossed() && !((int32_t)(zero_crossing_hyst_time - HAL_GetTick()) > 0))
 	    {
 	    	HAL_GPIO_TogglePin(SCOPE_Pin_GPIO_Port, SCOPE_Pin_Pin);
 	    	if(first_time){
