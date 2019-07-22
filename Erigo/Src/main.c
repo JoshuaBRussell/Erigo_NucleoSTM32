@@ -173,9 +173,9 @@ bool check_stim_params(WAV_CMD_DATA* CMD_DATA_Handle){
 
 	bool vals_in_bounds = false;
 	//Check test_amp_ma
-    if(in_range(CMD_DATA_Handle->test_amp_ma, TEST_AMP_MA_MIN, TEST_AMP_MA_MAX) &&
-       in_range(CMD_DATA_Handle->nm_amp_ma, NM_AMP_MA_MIN,NM_AMP_MA_MAX)   &&
-	   in_range(CMD_DATA_Handle->freq_sel, FREQ_SEL_MIN, FREQ_SEL_MAX)){
+    if(in_range(CMD_DATA_Handle->TestAmp_mA, TEST_AMP_MA_MIN, TEST_AMP_MA_MAX) &&
+       in_range(CMD_DATA_Handle->CondAmp_mA, NM_AMP_MA_MIN,NM_AMP_MA_MAX)   &&
+	   in_range(CMD_DATA_Handle->CondFreq_Hz, FREQ_SEL_MIN, FREQ_SEL_MAX)){
         return true;
     }
 

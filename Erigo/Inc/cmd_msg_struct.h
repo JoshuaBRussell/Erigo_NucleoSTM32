@@ -6,17 +6,17 @@
 typedef struct WAV_CMD_DATA{
 	uint8_t cmd_id;
 
-	uint32_t stimmode;
-	uint32_t test_amp_ma;
-	uint32_t testpretime_ms;
-	uint32_t testposttime_ms;
-	uint32_t testtotalpulses;
-	uint32_t testintercycles;
-	uint32_t testcyclephase;
-	uint32_t nm_amp_ma;
-	uint32_t freq_sel;
-	uint32_t condnumofpulses;
-	uint32_t thresholdzerocrossing;
+	uint32_t StimMode;
+	uint32_t TestAmp_mA;
+	uint32_t TestPreTime_ms;
+	uint32_t TestPostTime_ms;
+	uint32_t TestTotalPulses;
+	uint32_t TestInterCycles;
+	uint32_t TestCyclePhase;
+	uint32_t CondAmp_mA;
+	uint32_t CondFreq_Hz;
+	uint32_t CondNumOfPulses;
+	uint32_t ThresholdZeroCrossing;
 }WAV_CMD_DATA;
 
 #endif
