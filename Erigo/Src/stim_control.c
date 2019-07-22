@@ -38,9 +38,8 @@ extern ADC_HandleTypeDef hadc2;
 
 static enum WF_STATE STIM_STATE = STIM_FREQ_TRIGGER_LOW;
 
-static uint16_t Test_Amplitude_in_Counts = 0;
-static uint16_t NM_Amplitude_in_Counts = 0;
-static uint16_t Freq_Sel_in_Counts = 0;
+static uint16_t TestAmp_DAC = 0;
+static uint16_t CondAmp_DAC = 0;
 
 static uint16_t T_LOW = 0; //Initially based on freq.
 static uint16_t T_PERIOD = 0;
@@ -68,18 +67,18 @@ uint32_t get_time_of_last_diagnostic_pulse(){
 }
 
 void stim_control_setup(WAV_CMD_DATA* cmd_data){
-	uint16_t test_amp_ma, nm_amp_ma, freq_sel;
+	uint32_t TestAmp_mA, CondAmp_mA, CondFreq_Hz;
 
 	//Update local variables from WAV_GEN_CMD data. (comm_get_control_params MUST be called and successful.)
-	test_amp_ma = cmd_data->test_amp_ma;
-	nm_amp_ma = cmd_data->nm_amp_ma;
-	freq_sel = cmd_data->freq_sel;
+	TestAmp_mA = cmd_data->TestAmp_mA;
+	CondAmp_mA = cmd_data->CondAmp_mA;
+	CondFreq_Hz = cmd_data->CondFreq_Hz;
 
 	//Convert
-	milliamps_to_DAC_counts(test_amp_ma, &Test_Amplitude_in_Counts);
-	milliamps_to_DAC_counts(nm_amp_ma, &NM_Amplitude_in_Counts);
+	milliamps_to_DAC_counts(TestAmp_mA, &TestAmp_DAC);
+	milliamps_to_DAC_counts(CondAmp_mA, &CondAmp_DAC);
 
-	switch(freq_sel){
+	switch(CondFreq_Hz){
 	case FREQ_12_5Hz :
 		T_PERIOD = TPERIOD_12_5HZ_IN_COUNTS;
 		break;
@@ -101,7 +100,7 @@ void stim_control_setup(WAV_CMD_DATA* cmd_data){
 
 void stim_control_start(){
   	//Set initial value of stim amplitude.
-  	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
+  	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CondAmp_DAC);
   	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
   	HAL_TIM_Base_Start_IT(&htim3);
@@ -160,7 +159,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			case STIM_FREQ_TRIGGER_HIGH:
 				if(send_diagnostic_pulse){
 					__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_PRETEST_IN_COUNTS);
-					HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, Test_Amplitude_in_Counts);
+					HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, TestAmp_DAC);
 					HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 					STIM_STATE = STIM_TEST_TRIGGER_LOW_PRETEST;
 				}else{
@@ -182,7 +181,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			case STIM_TEST_TRIGGER_HIGH:
 				unset_diagnostic_pulse_flag();
 				__HAL_TIM_SET_AUTORELOAD(&htim3, STIM_LOW_POSTTEST_IN_COUNTS);
-				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, NM_Amplitude_in_Counts);
+				HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CondAmp_DAC);
 				HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 				STIM_STATE = STIM_TEST_TRIGGER_LOW_POSTTEST;
 
