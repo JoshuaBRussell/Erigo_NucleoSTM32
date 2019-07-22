@@ -126,9 +126,16 @@ class StartPage(tk.Frame):
                                     ]
         self.label_entry = Label_Entry_Frame(self, self.stim_control_labels, ["0"]*len(self.stim_control_labels))
 
-        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: self.Send_Stim_Command(self.label_entry.get_entry("CondAmp_mA"), 
+        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: self.Send_Stim_Command(self.label_entry.get_entry("StimMode"),
                                                                                                     self.label_entry.get_entry("TestAmp_mA"), 
+                                                                                                    self.label_entry.get_entry("TestPreTime_ms"), 
+                                                                                                    self.label_entry.get_entry("TestPostTime_ms"),
+                                                                                                    self.label_entry.get_entry("TestTotalPulses"),
+                                                                                                    self.label_entry.get_entry("TestInterCycles"),
+                                                                                                    self.label_entry.get_entry("TestCyclePhase"),
+                                                                                                    self.label_entry.get_entry("CondAmp_mA"),
                                                                                                     self.label_entry.get_entry("CondFreq_Hz"),
+                                                                                                    self.label_entry.get_entry("CondNumOfPulses"),
                                                                                                     self.label_entry.get_entry("ThresholdZeroCrossing")))
         self.Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: self.Send_Stop_Stim_Command())
         self.Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_ADC_Pos())
@@ -196,16 +203,30 @@ class StartPage(tk.Frame):
         self.after(1000, self.Get_Pos_Data)
         
 
-    def Send_Stim_Command(self, nm_amp, diag_amp, freq, adc_threshold):
-        msg_params = CmdMsgParams(int(diag_amp), int(nm_amp), int(freq))
+    def Send_Stim_Command(self, stimmode, testamp_ma, testpretime_ms, testposttime_ms, testtotalpulses, testintercycles, 
+                                    testcyclephase, condamp_ma, condfreq_hz, condnumofpulses, thresholdzerocrossing):
+        msg_params = CmdMsgParams(int(stimmode), 
+                                  int(testamp_ma), 
+                                  int(testpretime_ms), 
+                                  int(testposttime_ms), int(testtotalpulses), 
+                                  int(testintercycles), int(testcyclephase), int(condamp_ma), 
+                                  int(condfreq_hz), int(condnumofpulses), int(thresholdzerocrossing))
         
         send_Stim_CMD(msg_params)
          
-        self.Write_to_TextBox("Stim Cmd Sent...")
-        self.Write_to_TextBox("NM AMP: " + str(nm_amp))
-        self.Write_to_TextBox("DIAG AMP: " + str(diag_amp))
-        self.Write_to_TextBox("FREQ: " + str(freq))
-        self.Write_to_TextBox("ThresholdZeroCrossing " + str(adc_threshold))
+        self.Write_to_TextBox("Stim Cmd Sent w/ paramaters:")
+        self.Write_to_TextBox("STIMMODE: " + str(stimmode))
+        self.Write_to_TextBox("TESTAMP_MA: " + str(testamp_ma))
+        self.Write_to_TextBox("TESTPRETIME_MS: " + str(testpretime_ms))
+        self.Write_to_TextBox("TESTPOSTTIME_MS: " + str(testposttime_ms))
+        self.Write_to_TextBox("TESTTOTALPULSES: " + str(testtotalpulses))
+        self.Write_to_TextBox("TESTINTERCYCLES: " + str(testintercycles))
+        self.Write_to_TextBox("TESTCYCLEPHASE: " + str(testcyclephase))
+        self.Write_to_TextBox("CONDAMP_MA: " + str(condamp_ma))
+        self.Write_to_TextBox("CONDFREQ_HZ: " + str(condfreq_hz))
+        self.Write_to_TextBox("CONDNUMOFPULSES: " + str(condnumofpulses))
+        self.Write_to_TextBox("THRESHOLDZEROCROSSING: " + str(thresholdzerocrossing))
+        self.Write_to_TextBox("")
 
     def Send_Stop_Stim_Command(self):
         msg_params = CmdMsgParams()

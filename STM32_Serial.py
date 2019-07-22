@@ -22,13 +22,23 @@ _min_handler = None
 
 class CmdMsgParams():
 
-    def __init__(self,diag_amp_ma=0, nm_amp_ma=0, freq_sel=0):
-        self.diag_amp_ma = diag_amp_ma
-        self.nm_amp_ma = nm_amp_ma
-        self.freq_sel = freq_sel
+    def __init__(self, stimmode=0, testamp_ma=0, testpretime_ms=0, testposttime_ms=0, testtotalpulses=0, testintercycles=0, 
+                 testcyclephase=0, condamp_ma=0, condfreq_hz=0, condnumofpulses=0, thresholdzerocrossing=0):
+        
+        self.stimmode = stimmode 
+        self.testamp_ma = testamp_ma 
+        self.testpretime_ms = testpretime_ms 
+        self.testposttime_ms = testposttime_ms 
+        self.testtotalpulses = testtotalpulses 
+        self.testintercycles = testintercycles 
+        self.testcyclephase = testcyclephase
+        self.condamp_ma = condamp_ma 
+        self.condfreq_hz = condfreq_hz 
+        self.condnumofpulses = condnumofpulses 
+        self.thresholdzerocrossing = thresholdzerocrossing
         
 
-def wait_for_ACK(min_handler: MINTransportSerial, timeout = 0.1):
+def wait_for_ACK(min_handler: MINTransportSerial=0, timeout = 0.1):
     start = time.time()
     while True:
         frames = min_handler.poll()
@@ -53,9 +63,17 @@ def send_CMD(cmd_id, cmd_msg_params):
        Returns False if no ACK was received within timeout or if the wrong cmd_id was returned as an ACK"""
     
     data = b''
-    data+=cmd_msg_params.diag_amp_ma.to_bytes(4, byteorder="big")
-    data+=cmd_msg_params.nm_amp_ma.to_bytes(4, byteorder="big")
-    data+=cmd_msg_params.freq_sel.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.stimmode.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.testamp_ma.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.testpretime_ms.to_bytes(4, byteorder="big") 
+    data+=cmd_msg_params.testposttime_ms.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.testtotalpulses.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.testintercycles.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.testcyclephase.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.condamp_ma.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.condfreq_hz.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.condnumofpulses.to_bytes(4, byteorder="big")
+    data+=cmd_msg_params.thresholdzerocrossing.to_bytes(4, byteorder="big")
     
     #Send CMD
     print("Send CMD...")
