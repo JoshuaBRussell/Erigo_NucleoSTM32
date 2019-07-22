@@ -76,13 +76,18 @@ class Label_Entry_Frame(tk.Frame):
         tk.Frame.__init__(self, parent)
         
         self.label_entry_pairs = {}
+        self.MAX_ROWS = 6
 
         for i, label_str in enumerate(label_list):
             self.label_entry_pairs[label_str] = [tk.Label(self, text=label_str), tk.Entry(self, )]
+            
+            #allows label entries to wrap around
+            label_row = i%self.MAX_ROWS  
+            label_col = 2*(i//self.MAX_ROWS)
 
             #place the label on the left of the entry
-            self.label_entry_pairs[label_str][0].grid(row = i, column = 0)
-            self.label_entry_pairs[label_str][1].grid(row = i, column = 1)
+            self.label_entry_pairs[label_str][0].grid(row = label_row, column = label_col)
+            self.label_entry_pairs[label_str][1].grid(row = label_row, column = label_col+1)
             
             #Set default entries
             if(default_entries):
@@ -113,16 +118,18 @@ class StartPage(tk.Frame):
         self.ADC_Stats_Min = tk.StringVar()
         self.ADC_Stats_Min.set("Min ADC Pos: --")
         self.ADC_Stats_Rec = tk.StringVar()
-        self.ADC_Stats_Rec.set("Rec ADC Threshold: --")
+        self.ADC_Stats_Rec.set("Rec ThresholdZeroCrossing --")
 
         #Create Label/Entry Frame
-        self.stim_control_labels = ["NM AMP Selection:", "Diag AMP Selection:", "Freq Selection:", "ADC Threshold:"]
+        self.stim_control_labels = ["StimMode", "TestAmp_mA", "TestPreTime_ms", "TestPostTime_ms", "TestTotalPulses", "TestInterCycles", 
+                                    "TestCyclePhase", "CondAmp_mA", "CondFreq_Hz", "CondNumOfPulses", "ThresholdZeroCrossing",
+                                    ]
         self.label_entry = Label_Entry_Frame(self, self.stim_control_labels, ["0"]*len(self.stim_control_labels))
 
-        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: self.Send_Stim_Command(self.label_entry.get_entry("NM AMP Selection:"), 
-                                                                                                    self.label_entry.get_entry("Diag AMP Selection:"), 
-                                                                                                    self.label_entry.get_entry("Freq Selection:"),
-                                                                                                    self.label_entry.get_entry("ADC Threshold:")))
+        self.Stim_Button = tk.Button(self, text = "Start Stim", command = lambda: self.Send_Stim_Command(self.label_entry.get_entry("CondAmp_mA"), 
+                                                                                                    self.label_entry.get_entry("TestAmp_mA"), 
+                                                                                                    self.label_entry.get_entry("CondFreq_Hz"),
+                                                                                                    self.label_entry.get_entry("ThresholdZeroCrossing")))
         self.Stop_Stim_Button = tk.Button(self, text = "Stop Stim", command = lambda: self.Send_Stop_Stim_Command())
         self.Record_Data_Button = tk.Button(self, text = "Get Position Data", command = lambda: self.Update_ADC_Pos())
 
@@ -198,7 +205,7 @@ class StartPage(tk.Frame):
         self.Write_to_TextBox("NM AMP: " + str(nm_amp))
         self.Write_to_TextBox("DIAG AMP: " + str(diag_amp))
         self.Write_to_TextBox("FREQ: " + str(freq))
-        self.Write_to_TextBox("ADC THRESHOLD: " + str(adc_threshold))
+        self.Write_to_TextBox("ThresholdZeroCrossing " + str(adc_threshold))
 
     def Send_Stop_Stim_Command(self):
         msg_params = CmdMsgParams()
@@ -245,7 +252,7 @@ class StartPage(tk.Frame):
 
         self.ADC_Stats_Max.set("Max ADC Pos: " + str(int(max_90_percentile)))
         self.ADC_Stats_Min.set("Min ADC Pos: " + str(int(min_10_percentile)))
-        self.ADC_Stats_Rec.set("Rec ADC Threshold: " + str(int(AVG)))
+        self.ADC_Stats_Rec.set("Rec ThresholdZeroCrossing " + str(int(AVG)))
 
         self.angle_plot.hlines(max_90_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
         self.angle_plot.hlines(min_10_percentile, PLOT_LWR_LIMIT_X, PLOT_UPR_LIMIT_X)
