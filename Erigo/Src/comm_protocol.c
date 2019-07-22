@@ -66,9 +66,19 @@ void parse_message(uint8_t msg_id, uint8_t *min_payload, uint8_t len_payload){
          //get_control_params passes in. BUT since, the definition of the CMD_DATA container
          //is in this file, we can reference it here.
     	 CMD_DATA.cmd_id = msg_id;
-    	 CMD_DATA.test_amp_ma = ((uint32_t)min_payload[0] << 32 | (uint32_t)min_payload[1] << 24 | (uint32_t)min_payload[2] << 8 | (uint32_t)min_payload[3]);
-    	 CMD_DATA.nm_amp_ma =   ((uint32_t)min_payload[4] << 32 | (uint32_t)min_payload[5] << 24 | (uint32_t)min_payload[6] << 8 | (uint32_t)min_payload[7]);
-    	 CMD_DATA.freq_sel =    ((uint32_t)min_payload[8] << 32 | (uint32_t)min_payload[9] << 24 | (uint32_t)min_payload[10] << 8 | (uint32_t)min_payload[11]);
+
+    	 CMD_DATA.stimmode = ((uint32_t)min_payload[0] << 32 | (uint32_t)min_payload[1] << 24 | (uint32_t)min_payload[2] << 8 | (uint32_t)min_payload[3]);
+    	 CMD_DATA.test_amp_ma =   ((uint32_t)min_payload[4] << 32 | (uint32_t)min_payload[5] << 24 | (uint32_t)min_payload[6] << 8 | (uint32_t)min_payload[7]);
+    	 CMD_DATA.testpretime_ms =    ((uint32_t)min_payload[8] << 32 | (uint32_t)min_payload[9] << 24 | (uint32_t)min_payload[10] << 8 | (uint32_t)min_payload[11]);
+    	 CMD_DATA.testposttime_ms =    ((uint32_t)min_payload[12] << 32 | (uint32_t)min_payload[13] << 24 | (uint32_t)min_payload[14] << 8 | (uint32_t)min_payload[15]);
+    	 CMD_DATA.testtotalpulses =    ((uint32_t)min_payload[16] << 32 | (uint32_t)min_payload[17] << 24 | (uint32_t)min_payload[18] << 8 | (uint32_t)min_payload[19]);
+    	 CMD_DATA.testintercycles =    ((uint32_t)min_payload[20] << 32 | (uint32_t)min_payload[21] << 24 | (uint32_t)min_payload[22] << 8 | (uint32_t)min_payload[23]);
+    	 CMD_DATA.testcyclephase =    ((uint32_t)min_payload[24] << 32 | (uint32_t)min_payload[25] << 24 | (uint32_t)min_payload[26] << 8 | (uint32_t)min_payload[27]);
+    	 CMD_DATA.nm_amp_ma =    ((uint32_t)min_payload[28] << 32 | (uint32_t)min_payload[29] << 24 | (uint32_t)min_payload[30] << 8 | (uint32_t)min_payload[31]);
+    	 CMD_DATA.freq_sel =    ((uint32_t)min_payload[32] << 32 | (uint32_t)min_payload[33] << 24 | (uint32_t)min_payload[34] << 8 | (uint32_t)min_payload[35]);
+    	 CMD_DATA.condnumofpulses =    ((uint32_t)min_payload[36] << 32 | (uint32_t)min_payload[37] << 24 | (uint32_t)min_payload[38] << 8 | (uint32_t)min_payload[39]);
+    	 CMD_DATA.thresholdzerocrossing =    ((uint32_t)min_payload[40] << 32 | (uint32_t)min_payload[41] << 24 | (uint32_t)min_payload[42] << 8 | (uint32_t)min_payload[43]);
+
 
 
     	 comm_success = true;
